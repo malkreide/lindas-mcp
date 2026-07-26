@@ -81,3 +81,15 @@ async def test_long_query_uses_post():
         await c.run_query(http, long_query)
     assert post_route.called
     assert not get_route.called
+
+
+def test_endpoint_host_is_on_the_egress_allow_list():
+    """SEC-021: the only host the client ever targets must be allow-listed."""
+    c.assert_host_allowed(c.ENDPOINT)
+
+
+def test_assert_host_allowed_rejects_off_host_url():
+    """SEC-021: an off-host URL is refused before any client is built."""
+    with pytest.raises(c.UpstreamError) as exc:
+        c.assert_host_allowed("https://evil.example.com/query")
+    assert "not allowed" in str(exc.value)

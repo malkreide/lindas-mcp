@@ -215,6 +215,27 @@ async def test_api_status_reports_failure_gracefully():
 
 
 # --------------------------------------------------------------------------
+# Tool-definition integrity (SEC-022)
+# --------------------------------------------------------------------------
+
+
+async def test_tool_manifest_matches_committed_lock():
+    """SEC-022: the live tool definitions must match tool-definitions.lock.json
+    so a silent rug-pull fails CI until the lock is regenerated and reviewed."""
+    import json
+    from pathlib import Path
+
+    lock_path = Path(__file__).resolve().parent.parent / "tool-definitions.lock.json"
+    assert lock_path.exists(), "tool-definitions.lock.json is missing"
+    committed = json.loads(lock_path.read_text(encoding="utf-8"))
+    live = await server.tool_manifest()
+    assert live["combined_sha256"] == committed["combined_sha256"], (
+        "Tool definitions changed. Regenerate tool-definitions.lock.json and "
+        "note the change in CHANGELOG.md (SEC-022)."
+    )
+
+
+# --------------------------------------------------------------------------
 # Live probes (excluded from CI via -m "not live")
 # --------------------------------------------------------------------------
 

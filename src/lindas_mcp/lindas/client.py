@@ -13,10 +13,18 @@ from __future__ import annotations
 import asyncio
 import datetime as _dt
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
 ENDPOINT = "https://lindas.admin.ch/query"
+
+# SEC-021: code-layer egress allow-list. A `frozenset` (not env-configurable) is
+# the single destination this server may ever reach. `assert_host_allowed` runs
+# before the client is built, and `follow_redirects=False` refuses any off-host
+# redirect. The network-layer counterpart is documented in
+# `docs/network-egress.md`.
+ALLOWED_HOSTS: frozenset[str] = frozenset({"lindas.admin.ch"})
 
 ATTRIBUTION = (
     "Data: LINDAS Linked Data Service, Swiss Federal Archives — "
@@ -56,15 +64,27 @@ def _record_success() -> None:
     _LAST_SUCCESS["ts"] = _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
 
 
+def assert_host_allowed(url: str) -> None:
+    """Raise UpstreamError if `url`'s host is not on the egress allow-list."""
+    host = urlsplit(url).hostname or ""
+    if host not in ALLOWED_HOSTS:
+        raise UpstreamError(
+            f"Egress to {host!r} is not allowed (allow-list: {sorted(ALLOWED_HOSTS)})."
+        )
+
+
 def build_client() -> httpx.AsyncClient:
     """Create a configured AsyncClient. Caller owns the lifecycle."""
+    assert_host_allowed(ENDPOINT)
     return httpx.AsyncClient(
         timeout=TIMEOUT_S,
         headers={
             "Accept": "application/sparql-results+json",
             "User-Agent": USER_AGENT,
         },
-        follow_redirects=True,
+        # A SPARQL query endpoint answers directly (HTTP 200); an off-host
+        # redirect is surfaced as an error rather than followed (SEC-021).
+        follow_redirects=False,
     )
 
 

@@ -13,7 +13,10 @@ data with codes already resolved to labels.
 from __future__ import annotations
 
 import datetime as _dt
+import hashlib
+import json as _json
 import os
+import sys
 from typing import Any, Literal
 
 from mcp.server.fastmcp import FastMCP
@@ -293,13 +296,102 @@ async def api_status() -> StatusResult:
         )
 
 
+# --------------------------------------------------------------------------
+# Tool-definition integrity (SEC-022)
+# --------------------------------------------------------------------------
+
+
+def _stable_signature(schema: dict[str, Any]) -> dict[str, Any]:
+    """Project a tool's input schema to its rug-pull-relevant surface.
+
+    Deliberately captures only the *contract* — the argument names and which are
+    required — not the pydantic/mcp-version-specific serialisation of constraints
+    (minimum/maximum/pattern/title/anyOf), so the lock is stable across SDK patch
+    upgrades. Argument-level constraints live in the reviewed source and CHANGELOG.
+    """
+    props = schema.get("properties", {}) if isinstance(schema, dict) else {}
+    return {
+        "arguments": sorted(props),
+        "required": sorted(schema.get("required", []) if isinstance(schema, dict) else []),
+    }
+
+
+async def tool_manifest() -> dict[str, Any]:
+    """Return a deterministic hash snapshot of the registered tool definitions.
+
+    Committed as `tool-definitions.lock.json` and checked in CI so a silent
+    change to the tool set, a tool's name, or its argument surface (a rug-pull)
+    fails the build until the lock is regenerated and reviewed. The snapshot
+    covers only what is derived from the source function signatures — tool name,
+    argument names, and which are required — because that is stable across
+    mcp/pydantic patch upgrades. Docstrings are governed by PR review + CHANGELOG.
+    """
+    tools = sorted(await mcp.list_tools(), key=lambda t: t.name)
+    entries = [
+        {"name": tool.name, **_stable_signature(tool.inputSchema or {})} for tool in tools
+    ]
+    combined = hashlib.sha256(
+        _json.dumps(entries, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()
+    return {
+        "server": "lindas-mcp",
+        "tool_count": len(entries),
+        "combined_sha256": combined,
+        "tools": entries,
+    }
+
+
+# --------------------------------------------------------------------------
+# Transport
+# --------------------------------------------------------------------------
+
+
+def build_http_app(transport: str) -> Any:
+    """Build the SSE / streamable-http ASGI app with CORS configured.
+
+    FastMCP.run() serves the ASGI app without CORS, so browser clients cannot
+    read the `Mcp-Session-Id` response header and lose their session (SDK-004).
+    We build the app ourselves and expose that header via CORS.
+    """
+    from starlette.middleware.cors import CORSMiddleware
+
+    app = mcp.sse_app() if transport == "sse" else mcp.streamable_http_app()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+        allow_headers=["*", "Mcp-Session-Id"],
+        # Browsers only read a response header if it is listed here, and MCP
+        # clients need Mcp-Session-Id to keep a session.
+        expose_headers=["Mcp-Session-Id"],
+    )
+    return app
+
+
+def _run_http(transport: str, host: str, port: int) -> None:
+    """Serve the CORS-wrapped SSE / streamable-http app with uvicorn."""
+    import uvicorn
+
+    uvicorn.run(build_http_app(transport), host=host, port=port, log_level="info")
+
+
 def main() -> None:
     """Entry point. Transport via LINDAS_MCP_TRANSPORT (stdio | sse | http)."""
     transport = os.getenv("LINDAS_MCP_TRANSPORT", "stdio").lower()
     if transport in {"sse", "streamable-http", "http"}:
-        mcp.settings.host = os.getenv("HOST", "0.0.0.0")
-        mcp.settings.port = int(os.getenv("PORT", "8000"))
-        mcp.run(transport="sse" if transport == "sse" else "streamable-http")
+        # SEC-016: default to loopback. Binding to all interfaces is an
+        # explicit opt-in (the container image sets HOST=0.0.0.0 on purpose).
+        host = os.getenv("HOST", "127.0.0.1")
+        port = int(os.getenv("PORT", "8000"))
+        if host == "0.0.0.0":  # noqa: S104 — intentional, warned about below
+            print(
+                "lindas-mcp: binding to 0.0.0.0 exposes the server on all network "
+                "interfaces; run it only behind a reverse proxy / firewall.",
+                file=sys.stderr,
+            )
+        mcp.settings.host = host
+        mcp.settings.port = port
+        _run_http("sse" if transport == "sse" else "streamable-http", host, port)
     else:
         mcp.run(transport="stdio")
 

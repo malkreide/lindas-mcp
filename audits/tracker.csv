@@ -1,0 +1,2 @@
+server_name,audit_status,findings,last_audit_run,last_audit_at,production_ready,released_version,notes
+lindas-mcp,Pending,,,,,0.1.0,Repo structure aligned to portfolio standard; full mcp-audit run not yet performed. Audit output will live under audits/<timestamp>/.
