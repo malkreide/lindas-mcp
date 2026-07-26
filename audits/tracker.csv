@@ -1,2 +1,2 @@
 server_name,audit_status,findings,last_audit_run,last_audit_at,production_ready,released_version,notes
-lindas-mcp,Pending,,,,,0.1.0,Repo structure aligned to portfolio standard; full mcp-audit run not yet performed. Audit output will live under audits/<timestamp>/.
+lindas-mcp,Findings dokumentiert,11,2026-07-26T125407-Z-lindas-mcp,2026-07-26,True,0.1.0,"Audited 2026-07-26 (skill v1.0.0). 43/68 checks applicable; 29 pass, 2 fail, 9 partial, 3 todo. 0 critical/high fails -> production-ready. 11 findings (6 high, 5 medium) are best-practice hardening, tracked under audits/2026-07-26T125407-Z-lindas-mcp/findings/."
