@@ -1,0 +1,136 @@
+"""Layer 1 — the raw SPARQL/HTTP client.
+
+This module knows only two things: how to send a SPARQL query over HTTP, and
+how to turn the JSON result bindings into flat dicts. It knows nothing about
+data cubes. That separation is deliberate: this file is the part that ports
+unchanged to any other LINDAS-backed server.
+
+Resilience defaults follow the Swiss Public Data MCP Portfolio standard.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import datetime as _dt
+from typing import Any
+
+import httpx
+
+ENDPOINT = "https://lindas.admin.ch/query"
+
+ATTRIBUTION = (
+    "Data: LINDAS Linked Data Service, Swiss Federal Archives — "
+    "https://lindas.admin.ch. Each cube declares its own licence; check the "
+    "`licence` field before reuse."
+)
+
+USER_AGENT = "lindas-mcp (+https://github.com/malkreide/lindas-mcp)"
+
+# The LINDAS store aborts expensive queries itself at 60-90s and then returns
+# an empty/closed connection (observed as HTTP 000 during probing). We cut in
+# front of that with a client-side timeout so the agent gets a clean error
+# rather than a silent hang.
+TIMEOUT_S = 45.0
+MAX_ATTEMPTS = 4
+
+# Queries longer than this are sent via POST to avoid URL-length limits.
+GET_QUERY_LIMIT = 1500
+
+
+class SparqlError(RuntimeError):
+    """The endpoint rejected the query (HTTP 400, malformed SPARQL)."""
+
+
+class UpstreamError(RuntimeError):
+    """The endpoint was unreachable or timed out after all retries."""
+
+
+_LAST_SUCCESS: dict[str, str] = {}
+
+
+def last_success() -> str | None:
+    return _LAST_SUCCESS.get("ts")
+
+
+def _record_success() -> None:
+    _LAST_SUCCESS["ts"] = _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds")
+
+
+def build_client() -> httpx.AsyncClient:
+    """Create a configured AsyncClient. Caller owns the lifecycle."""
+    return httpx.AsyncClient(
+        timeout=TIMEOUT_S,
+        headers={
+            "Accept": "application/sparql-results+json",
+            "User-Agent": USER_AGENT,
+        },
+        follow_redirects=True,
+    )
+
+
+async def run_query(
+    http: httpx.AsyncClient,
+    query: str,
+    *,
+    timeout_s: float | None = None,
+) -> list[dict[str, Any]]:
+    """Execute a SPARQL SELECT/ASK query and return flat result rows.
+
+    Retries transient failures (5xx, 429, network) with 2s/4s/8s backoff.
+    A 400 is a query error — it is raised immediately, never retried, and
+    carries the endpoint's own diagnostic so the caller can see what was
+    malformed.
+    """
+    use_post = len(query) > GET_QUERY_LIMIT
+    last_error: Exception | None = None
+    effective_timeout = timeout_s or TIMEOUT_S
+
+    for attempt in range(MAX_ATTEMPTS):
+        if attempt > 0:
+            await asyncio.sleep(2**attempt)
+        try:
+            if use_post:
+                resp = await http.post(
+                    ENDPOINT,
+                    content=query.encode("utf-8"),
+                    headers={"Content-Type": "application/sparql-query"},
+                    timeout=effective_timeout,
+                )
+            else:
+                resp = await http.get(ENDPOINT, params={"query": query}, timeout=effective_timeout)
+
+            if resp.status_code == 400:
+                raise SparqlError(f"LINDAS rejected the query: {resp.text.strip()[:400]}")
+            resp.raise_for_status()
+            _record_success()
+            return _parse_bindings(resp.json())
+
+        except SparqlError:
+            raise
+        except httpx.HTTPStatusError as exc:
+            last_error = exc
+            status = exc.response.status_code
+            if 400 <= status < 500 and status != 429:
+                raise UpstreamError(f"LINDAS returned {status}: {exc.response.text[:200]}") from exc
+        except httpx.RequestError as exc:
+            last_error = exc
+
+    raise UpstreamError(
+        f"LINDAS unreachable after {MAX_ATTEMPTS} attempts. "
+        f"Last error: {last_error}. This often means the query was too broad "
+        f"and the store timed out — anchor it on a known class such as "
+        f"`?x a cube:Cube`. Last success: {last_success() or 'none this session'}."
+    )
+
+
+def _parse_bindings(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """Flatten SPARQL JSON results to a list of {var: value} dicts.
+
+    Keeps only the literal/URI value string; datatype and language are dropped
+    because the cube layer handles language selection explicitly.
+    """
+    rows: list[dict[str, Any]] = []
+    for binding in payload.get("results", {}).get("bindings", []):
+        row = {var: cell.get("value") for var, cell in binding.items()}
+        rows.append(row)
+    return rows

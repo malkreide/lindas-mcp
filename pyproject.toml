@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lindas-mcp"
+version = "0.1.0"
+description = "MCP server for LINDAS — the Swiss administration's linked-data knowledge graph"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "malkreide" }]
+keywords = ["mcp", "model-context-protocol", "llm", "swiss-open-data", "lindas", "sparql", "linked-data", "knowledge-graph"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+dependencies = ["mcp>=1.2.0", "httpx>=0.27", "pydantic>=2.7"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6"]
+
+[project.scripts]
+lindas-mcp = "lindas_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/malkreide/lindas-mcp"
+Repository = "https://github.com/malkreide/lindas-mcp"
+"Data source" = "https://lindas.admin.ch"
+Portfolio = "https://github.com/malkreide/swiss-public-data-mcp"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lindas_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["live: hits the real LINDAS endpoint (excluded from CI)"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
