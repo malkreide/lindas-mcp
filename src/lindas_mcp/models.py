@@ -35,6 +35,14 @@ class CubeSearchResult(LindasResponse):
     language: str
     latest_only: bool
     returned: int
+    match_type: Literal["exact", "none"] = Field(
+        default="exact",
+        description="'none' when nothing matched — distinguishes a real miss from an error.",
+    )
+    suggestion: str | None = Field(
+        default=None,
+        description="Actionable next step when match_type is 'none' (e.g. which tool to try).",
+    )
     cubes: list[CubeHit]
 
 
@@ -95,6 +103,14 @@ class Municipality(BaseModel):
 class MunicipalityResult(LindasResponse):
     query: str
     returned: int
+    match_type: Literal["exact", "none"] = Field(
+        default="exact",
+        description="'none' when the name/BFS number resolved to nothing.",
+    )
+    suggestion: str | None = Field(
+        default=None,
+        description="Actionable next step when match_type is 'none'.",
+    )
     municipalities: list[Municipality]
 
 

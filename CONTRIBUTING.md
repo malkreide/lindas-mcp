@@ -35,6 +35,12 @@ servers unchanged:
 Tools in `server.py` talk only to `cube.py`; raw SPARQL never reaches the agent
 except through `run_sparql`.
 
+The 7 tool definitions deliberately stay together in `server.py`: each tool body
+is a thin wrapper (validate → call `cube.py` → shape the response model), and all
+real logic lives in the layered `lindas/` package. A `tools/` split would add
+indirection without moving any logic, so the single file is intentional rather
+than accidental.
+
 ## Development
 
 ```bash
