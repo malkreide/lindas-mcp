@@ -53,6 +53,14 @@ Open-Data-Endpunkt erreicht.
   Tool-Vertrags lässt den Build fehlschlagen. Bei Aggregation hinter einem
   gemeinsamen Gateway dessen Tool-Allow-Listing und Tool-Poisoning-Erkennung
   aktivieren.
+- **Tool-Namespacing** (SEC-022) — die Tool-Namen bleiben bewusst ohne Präfix
+  (`search_cubes`, nicht `lindas__search_cubes`), zwecks Konsistenz über das
+  Swiss-Public-Data-MCP-Portfolio. Server-übergreifendes Tool-Shadowing ist ein
+  Multi-Server-Thema und wird am aggregierenden Gateway behandelt; innerhalb
+  dieses einzelnen, in-repo, per PR reviewten Servers verhindert der
+  `tool-definitions.lock.json`-Hash bereits stille Änderungen der
+  Tool-Oberfläche. Als Kontrolle auf Portfolio-Ebene akzeptiert; führt das
+  Portfolio Präfixe ein, werden sie einheitlich über alle Server angewandt.
 - **Netzwerk-Binding für gehostete Deployments** — der SSE-/streamable-http-
   Transport bindet an `HOST`, standardmässig `127.0.0.1` (Loopback). Ein Binding
   an `0.0.0.0` ist ein expliziter Opt-in (das Container-Image setzt es bewusst)
