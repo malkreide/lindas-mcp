@@ -35,6 +35,12 @@ LINDAS-Server gehoben werden kann:
 Die Tools in `server.py` sprechen nur mit `cube.py`; rohes SPARQL erreicht den
 Agenten nie ausser über `run_sparql`.
 
+Die 7 Tool-Definitionen bleiben bewusst zusammen in `server.py`: Jeder Tool-Body
+ist ein dünner Wrapper (validieren → `cube.py` aufrufen → Response-Modell formen),
+die eigentliche Logik liegt im geschichteten `lindas/`-Paket. Ein `tools/`-Split
+würde Indirektion ergänzen, ohne Logik zu verschieben — die Einzeldatei ist also
+Absicht, nicht Zufall.
+
 ## Entwicklung
 
 ```bash

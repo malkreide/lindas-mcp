@@ -15,7 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `tool-definitions.lock.json` with a SEC-022 CI integrity check: a committed
   hash snapshot of every tool name and its argument surface, verified by
   `server.tool_manifest()` so a silent rug-pull fails the build.
-- `audits/tracker.csv` scaffold for the portfolio audit tracker.
+- Full `mcp-audit` run under `audits/2026-07-26T125407-Z-lindas-mcp/`
+  (production-ready; 11 hardening findings).
+- **Audit remediation — structured logging (OBS-003):** stderr-bound JSON logs
+  via `structlog` (`logging_config.py`), per-tool-call events (tool, duration,
+  outcome) and a `LOG_LEVEL` env var. stdout stays reserved for JSON-RPC.
+- **Audit remediation — not-found heuristics (ARCH-003):** `search_cubes` and
+  `resolve_municipality` now return `match_type` (`exact`/`none`) and an
+  actionable `suggestion` on an empty result.
+- **Audit remediation — `Context` injection (SDK-003):** tools accept a `Context`
+  and emit progress/debug events for long-running SPARQL calls.
 
 ### Changed
 - **Egress hardening (SEC-021):** added a code-layer `ALLOWED_HOSTS` allow-list
@@ -25,10 +34,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `HOST` to `127.0.0.1` (loopback) instead of `0.0.0.0`; binding to all
   interfaces is an explicit opt-in and prints a stderr warning. The container
   image sets `HOST=0.0.0.0` deliberately.
-- **CORS (SDK-004):** the HTTP transport now serves a CORS-wrapped app exposing
-  the `Mcp-Session-Id` header so browser MCP clients keep their session.
-- Aligned `pyproject.toml` to the portfolio floor (`mcp>=1.28.1`, Python 3.13
-  classifier, `Issues` URL).
+- **Connection pooling (SDK-001):** a single `httpx` client is now built once by
+  a FastMCP `lifespan` and shared across all tool calls (`client_session()`),
+  instead of a fresh client per call. Direct unit-test calls fall back to a
+  per-call client.
+- **Tool annotations (ARCH-009):** all tools now also set `idempotentHint: true`
+  and `openWorldHint: true`.
+- **Schema-level input validation (SEC-018):** tool arguments use
+  `Annotated[..., Field(ge=/le=/min_length=/max_length=)]` — out-of-range inputs
+  are rejected as a `ValidationError` at the boundary instead of being clamped.
+- **Error masking (OBS-002):** unexpected exceptions are logged server-side and
+  surfaced to the LLM as a generic message; `SparqlError`/`UpstreamError` (which
+  carry only the public endpoint's own diagnostics) still propagate unchanged.
+- **CORS (SDK-004):** the HTTP transport serves a CORS-wrapped app exposing the
+  `Mcp-Session-Id` header, with origins configurable via `ALLOWED_ORIGINS`
+  (comma-separated; default `*`) instead of a hardcoded wildcard.
+- Documented the single-file `server.py` rationale (ARCH-011) and the MCP
+  protocol-version policy (ARCH-012).
+- Aligned `pyproject.toml` to the portfolio floor (`mcp>=1.28.1`, `structlog`,
+  Python 3.13 classifier, `Issues` URL).
 
 ## [0.1.0] — 2026-07-21
 

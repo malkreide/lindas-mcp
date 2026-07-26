@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import datetime as _dt
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -86,6 +88,41 @@ def build_client() -> httpx.AsyncClient:
         # redirect is surfaced as an error rather than followed (SEC-021).
         follow_redirects=False,
     )
+
+
+# SDK-001: a single client is installed by the server lifespan and reused across
+# tool calls (connection pooling). When no lifespan is running — e.g. in direct
+# unit tests — `client_session()` falls back to a fresh per-call client.
+_SHARED: dict[str, httpx.AsyncClient] = {}
+
+
+def set_shared_client(client: httpx.AsyncClient | None) -> None:
+    """Install (or clear) the process-wide pooled client. Called by the lifespan."""
+    if client is None:
+        _SHARED.pop("client", None)
+    else:
+        _SHARED["client"] = client
+
+
+def get_shared_client() -> httpx.AsyncClient | None:
+    """Return the lifespan-installed pooled client, if any."""
+    return _SHARED.get("client")
+
+
+@asynccontextmanager
+async def client_session() -> AsyncIterator[httpx.AsyncClient]:
+    """Yield the shared pooled client if the lifespan installed one, otherwise a
+    fresh short-lived client that is closed on exit.
+
+    This lets tools run both under the server lifespan (pooled, long-lived
+    client) and in direct unit tests that call them without a running lifespan.
+    """
+    shared = get_shared_client()
+    if shared is not None:
+        yield shared
+    else:
+        async with build_client() as http:
+            yield http
 
 
 async def run_query(

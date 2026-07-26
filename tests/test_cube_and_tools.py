@@ -215,6 +215,64 @@ async def test_api_status_reports_failure_gracefully():
 
 
 # --------------------------------------------------------------------------
+# Not-found heuristics (ARCH-003)
+# --------------------------------------------------------------------------
+
+
+@respx.mock
+async def test_search_cubes_reports_no_match_with_suggestion():
+    respx.get(EP).mock(return_value=httpx.Response(200, json=_results()))
+    result = await server.search_cubes(query="zzzz-nonexistent")
+    assert result.returned == 0
+    assert result.match_type == "none"
+    assert result.suggestion and "list_publishers" in result.suggestion
+
+
+@respx.mock
+async def test_resolve_municipality_reports_no_match():
+    respx.get(EP).mock(return_value=httpx.Response(200, json=_results()))
+    result = await server.resolve_municipality(name_or_bfs="Nowhere")
+    assert result.returned == 0
+    assert result.match_type == "none"
+    assert result.suggestion
+
+
+# --------------------------------------------------------------------------
+# Error masking (OBS-002) and pooled client (SDK-001)
+# --------------------------------------------------------------------------
+
+
+async def test_mask_errors_masks_unexpected_but_passes_known():
+    @server.mask_errors
+    async def boom_unexpected():
+        raise KeyError("secret internal detail")
+
+    @server.mask_errors
+    async def boom_known():
+        raise c.SparqlError("MALFORMED QUERY at line 3")
+
+    with pytest.raises(RuntimeError) as exc:
+        await boom_unexpected()
+    # The raw internal detail must not leak into the surfaced message.
+    assert "secret internal detail" not in str(exc.value)
+
+    # Known, LLM-safe errors propagate unchanged.
+    with pytest.raises(c.SparqlError):
+        await boom_known()
+
+
+async def test_client_session_prefers_shared_client():
+    sentinel = object()
+    c.set_shared_client(sentinel)  # type: ignore[arg-type]
+    try:
+        async with c.client_session() as http:
+            assert http is sentinel
+    finally:
+        c.set_shared_client(None)
+    assert c.get_shared_client() is None
+
+
+# --------------------------------------------------------------------------
 # Tool-definition integrity (SEC-022)
 # --------------------------------------------------------------------------
 

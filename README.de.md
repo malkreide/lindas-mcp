@@ -166,7 +166,9 @@ LINDAS_MCP_TRANSPORT=sse PORT=8000 lindas-mcp
 
 `LINDAS_MCP_TRANSPORT` akzeptiert `stdio` (Standard), `sse` oder `streamable-http`.
 Der SSE-/streamable-http-Transport bindet an `HOST`, **Default `127.0.0.1`**;
-mit `HOST=0.0.0.0` explizit exponieren (nur hinter einem Reverse-Proxy).
+mit `HOST=0.0.0.0` explizit exponieren (nur hinter einem Reverse-Proxy). Für ein
+gehostetes HTTP-Deployment `ALLOWED_ORIGINS` auf eine kommagetrennte Liste von
+Browser-Origins setzen (Default `*`) und `LOG_LEVEL` für die JSON-stderr-Logs.
 
 ### Docker
 
@@ -267,3 +269,14 @@ dieses PyPI-Paket mit dem GitHub-Namespace verknüpft:
 ```
 mcp-name: io.github.malkreide/lindas-mcp
 ```
+
+---
+
+## MCP-Protokoll-Version
+
+Die ausgehandelte MCP-Protokoll-Version wird vom gepinnten `mcp`-SDK verwaltet
+(`mcp>=1.28.1` in `pyproject.toml`), das Dependabot aktuell hält. SDK-Upgrades
+sind damit eine reviewte Änderung: Jeder protokollrelevante Bump wird in
+`CHANGELOG.md` vermerkt, und der Tool-Vertrag ist zusätzlich durch
+`tool-definitions.lock.json` (SEC-022) abgesichert, sodass eine Änderung der
+Tool-Oberfläche die CI bis zum Review fehlschlagen lässt.
