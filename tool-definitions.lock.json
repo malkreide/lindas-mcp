@@ -1,0 +1,71 @@
+{
+  "server": "lindas-mcp",
+  "tool_count": 7,
+  "combined_sha256": "5193c3581d8a5dc356514fb6b1f3565dbc399340c0a4915d40aea881d02a7b99",
+  "tools": [
+    {
+      "name": "api_status",
+      "arguments": [],
+      "required": []
+    },
+    {
+      "name": "get_cube_structure",
+      "arguments": [
+        "cube_uri",
+        "language"
+      ],
+      "required": [
+        "cube_uri"
+      ]
+    },
+    {
+      "name": "list_publishers",
+      "arguments": [],
+      "required": []
+    },
+    {
+      "name": "query_cube_observations",
+      "arguments": [
+        "cube_uri",
+        "language",
+        "limit",
+        "resolve_labels"
+      ],
+      "required": [
+        "cube_uri"
+      ]
+    },
+    {
+      "name": "resolve_municipality",
+      "arguments": [
+        "language",
+        "name_or_bfs"
+      ],
+      "required": [
+        "name_or_bfs"
+      ]
+    },
+    {
+      "name": "run_sparql",
+      "arguments": [
+        "query"
+      ],
+      "required": [
+        "query"
+      ]
+    },
+    {
+      "name": "search_cubes",
+      "arguments": [
+        "creator_uri",
+        "language",
+        "latest_only",
+        "limit",
+        "query"
+      ],
+      "required": [
+        "query"
+      ]
+    }
+  ]
+}

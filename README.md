@@ -166,6 +166,17 @@ LINDAS_MCP_TRANSPORT=sse PORT=8000 lindas-mcp
 ```
 
 `LINDAS_MCP_TRANSPORT` accepts `stdio` (default), `sse` or `streamable-http`.
+The SSE / streamable-http transport binds to `HOST`, **default `127.0.0.1`**;
+set `HOST=0.0.0.0` explicitly to expose it (only behind a reverse proxy).
+
+### Docker
+
+```bash
+docker compose up --build          # binds 0.0.0.0 inside the container, publishes :8000
+```
+
+The image runs as a non-root user, read-only, with resource limits and a
+TCP health check (see [`Dockerfile`](Dockerfile) and [`compose.yaml`](compose.yaml)).
 
 ---
 
@@ -221,6 +232,17 @@ structural assumption that a mock cannot validate. It is covered by a live test.
 
 ---
 
+## Contributing & security
+
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) — ground rules (read-only, one egress
+  host, anchored queries) and the local dev loop.
+- [`SECURITY.md`](SECURITY.md) — security posture and how to report a vulnerability.
+- [`EXAMPLES.md`](EXAMPLES.md) — use cases by audience, with the tool-selection table.
+- [`PUBLISHING.md`](PUBLISHING.md) — the PyPI / MCP Registry release process.
+- [`docs/roadmap.md`](docs/roadmap.md) — project phase and what Phase 2 would require.
+
+---
+
 ## Credits & related projects
 
 - Data: [LINDAS Linked Data Service](https://lindas.admin.ch), Swiss Federal Archives
@@ -230,3 +252,14 @@ structural assumption that a mock cannot validate. It is covered by a live test.
 - Portfolio: [swiss-public-data-mcp](https://github.com/malkreide/swiss-public-data-mcp)
 
 Licence: MIT. The cube data remains subject to the licence each publisher declares.
+
+---
+
+## MCP Registry
+
+Ownership marker used by the [MCP Registry](https://registry.modelcontextprotocol.io)
+to link this PyPI package to the GitHub namespace:
+
+```
+mcp-name: io.github.malkreide/lindas-mcp
+```

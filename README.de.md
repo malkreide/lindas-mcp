@@ -165,6 +165,17 @@ LINDAS_MCP_TRANSPORT=sse PORT=8000 lindas-mcp
 ```
 
 `LINDAS_MCP_TRANSPORT` akzeptiert `stdio` (Standard), `sse` oder `streamable-http`.
+Der SSE-/streamable-http-Transport bindet an `HOST`, **Default `127.0.0.1`**;
+mit `HOST=0.0.0.0` explizit exponieren (nur hinter einem Reverse-Proxy).
+
+### Docker
+
+```bash
+docker compose up --build          # bindet 0.0.0.0 im Container, published :8000
+```
+
+Das Image läuft als Nicht-Root-User, read-only, mit Ressourcen-Limits und einem
+TCP-Health-Check (siehe [`Dockerfile`](Dockerfile) und [`compose.yaml`](compose.yaml)).
 
 ---
 
@@ -222,6 +233,19 @@ Live-Test abgedeckt.
 
 ---
 
+## Mitwirken & Sicherheit
+
+- [`CONTRIBUTING.de.md`](CONTRIBUTING.de.md) — Grundregeln (read-only, ein
+  Egress-Host, verankerte Queries) und die lokale Dev-Schleife.
+- [`SECURITY.de.md`](SECURITY.de.md) — Sicherheits-Posture und wie man eine
+  Schwachstelle meldet.
+- [`EXAMPLES.md`](EXAMPLES.md) — Anwendungsfälle nach Zielgruppe, mit der
+  Tool-Auswahl-Tabelle.
+- [`PUBLISHING.md`](PUBLISHING.md) — der PyPI-/MCP-Registry-Release-Prozess.
+- [`docs/roadmap.md`](docs/roadmap.md) — Projektphase und was Phase 2 voraussetzt.
+
+---
+
 ## Credits & verwandte Projekte
 
 - Daten: [LINDAS Linked Data Service](https://lindas.admin.ch), Schweizerisches Bundesarchiv
@@ -232,3 +256,14 @@ Live-Test abgedeckt.
 
 Lizenz: MIT. Die Cube-Daten unterliegen weiterhin der Lizenz, die jede
 publizierende Stelle deklariert.
+
+---
+
+## MCP Registry
+
+Ownership-Marker, mit dem die [MCP Registry](https://registry.modelcontextprotocol.io)
+dieses PyPI-Paket mit dem GitHub-Namespace verknüpft:
+
+```
+mcp-name: io.github.malkreide/lindas-mcp
+```

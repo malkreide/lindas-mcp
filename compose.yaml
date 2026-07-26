@@ -1,0 +1,24 @@
+services:
+  lindas-mcp:
+    build: .
+    image: lindas-mcp:dev
+    ports: ["8000:8000"]
+    environment:
+      LINDAS_MCP_TRANSPORT: sse
+      # Explicit opt-in: bind all interfaces INSIDE the isolated container so the
+      # published port is reachable (the server default is 127.0.0.1 — SEC-016).
+      HOST: "0.0.0.0"
+      PORT: "8000"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    # Resource limits (SCALE-006): honoured by `docker compose up` (v2).
+    mem_limit: 256m
+    mem_reservation: 128m       # request < limit → burst head-room
+    cpus: 0.5
+    pids_limit: 128
+    ulimits:
+      nofile:                   # outbound HTTP connections need > the 1024 default
+        soft: 4096
+        hard: 8192
+    restart: unless-stopped

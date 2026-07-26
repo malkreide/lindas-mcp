@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lindas": {
+      "command": "python",
+      "args": ["-m", "lindas_mcp.server"]
+    }
+  }
+}
