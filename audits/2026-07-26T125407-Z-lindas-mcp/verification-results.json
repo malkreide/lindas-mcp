@@ -1,0 +1,528 @@
+{
+  "audit_meta": {
+    "server_name": "lindas-mcp",
+    "run_id": "2026-07-26T125407-Z-lindas-mcp",
+    "started_at": "2026-07-26T12:54:07.918242+00:00",
+    "timezone_offset": "Z",
+    "skill_version": "1.0.0",
+    "output_dir": "/home/user/lindas-mcp/audits/2026-07-26T125407-Z-lindas-mcp",
+    "catalog_hash": "091f446b27965044ce658a1d5f4b2cabe2b0ab5661dcc1a53b6be8f1f2e093c0",
+    "catalog_dir": "/root/.claude/skills/mcp-audit/checks",
+    "audit_date": "2026-07-26",
+    "catalog_version": "091f446b2796",
+    "policy": "fail-or-partial"
+  },
+  "results": {
+    "ARCH-001": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "src/lindas_mcp/server.py — all 7 tool names are consistent snake_case; no spaces/dots/parens/Unicode",
+        "docstrings provide use-case/context, not bare labels",
+        "No name= overrides; function names are the tool names — single convention repo-wide"
+      ],
+      "gaps": []
+    },
+    "ARCH-002": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "server.py — descriptions are multi-sentence docstrings well over 100 chars with context and caveats",
+        "query_cube_observations docstring carries caveats (limit behaviour, 'heavy slicing belongs in run_sparql')",
+        "Explicit differentiation of similar tools (phase 1 vs phase 2; run_sparql 'Advanced escape hatch')"
+      ],
+      "gaps": [
+        "No literal <use_case>/<important_notes> XML tags; use-case info is prose (accepted equivalent, not the tag convention)"
+      ]
+    },
+    "ARCH-003": {
+      "status": "fail",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "src/lindas_mcp/lindas/cube.py — search() returns published[:limit] / empty list on no match, no fuzzy fallback and no suggestions",
+        "cube.py — resolve_municipality() returns [] on no match with no fuzzy/suggestion mechanism",
+        "models.py — CubeSearchResult/MunicipalityResult have no match_type field; grep for match_type|fuzzy|suggest returns NONE"
+      ],
+      "gaps": [
+        "No match_type field (exact/fuzzy/none) on search results",
+        "Empty results trigger neither a fuzzy-match nor a suggestion mechanism, and no actionable 'note' on empty results"
+      ]
+    },
+    "ARCH-004": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "server.py — every tool handler takes only typed domain args (no request/ctx); transport-agnostic",
+        "main() selects transport via LINDAS_MCP_TRANSPORT (stdio | sse | streamable-http)",
+        "build_http_app() is shared setup for both sse and streamable-http; tool logic identical"
+      ],
+      "gaps": [
+        "Config read via os.getenv + module constants, not a Pydantic BaseSettings object (still env-var-driven, IoC intent met)"
+      ]
+    },
+    "ARCH-005": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "critical",
+      "evidence": [
+        "grep for (api_key|password|secret|token) = '...' across src/ returns NONE; client.py sends only Accept and User-Agent headers",
+        "client.py — ENDPOINT is the public https://lindas.admin.ch/query; no connection strings or credentials",
+        ".gitignore contains .env"
+      ],
+      "gaps": [
+        "No .env.example (server has no configurable secrets, low impact)",
+        "No gitleaks/trufflehog secret-scanning job in CI"
+      ]
+    },
+    "ARCH-006": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "server.py — exactly 7 @mcp.tool functions, at/below the <=8 threshold",
+        "cube.py — query_cube_observations is use-case aggregation, not 1:1 API mapping (reads structure + code lists, returns labelled data in one call)",
+        "Anchor demo query answerable in 1-2 tool calls (search_cubes -> query_cube_observations)"
+      ],
+      "gaps": []
+    },
+    "ARCH-007": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "cube.py — get_observations() composes get_structure() + get_codelist() per coded dimension and returns fully-resolved observations (thought-complete result)",
+        "server.py — tool description states its aggregated character ('codes resolved to labels')",
+        "models.py — ObservationsResult returns full observation records, not lookup handles"
+      ],
+      "gaps": [
+        "Internal code-list resolution is a sequential await loop, not parallelised with asyncio.gather",
+        "search_cubes -> get_cube_structure remains a mild two-step pointer pattern by design"
+      ]
+    },
+    "ARCH-008": {
+      "status": "pass",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "grep for @mcp.resource / @mcp.prompt returns NONE — only the Tools primitive is used",
+        "No primitives-justification section in README/docs",
+        "docs/roadmap.md documents the deliberate Phase-1 read-only tools-only posture"
+      ],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — tools-only is accepted for this server class (peer i14y-mcp passed identically).",
+        "Not >=2 primitives, and no explicit README justification for omitting Resources/Prompts",
+        "Idempotent read-only tools are prime Resource candidates but not evaluated for Resource migration"
+      ]
+    },
+    "ARCH-009": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "high",
+      "evidence": [
+        "server.py:47 — READ_ONLY = {readOnlyHint: True, destructiveHint: False}; applied explicitly to all 7 tools (no defaults)",
+        "readOnlyHint consistent with behaviour: all tools issue only read SELECT/ASK SPARQL",
+        "Annotations policy documented in README and docs/roadmap.md"
+      ],
+      "gaps": [
+        "openWorldHint not set although every tool reaches an external HTTP endpoint (criterion wants openWorldHint:true)",
+        "idempotentHint not set although these read-only queries are idempotent"
+      ]
+    },
+    "ARCH-011": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "Mandatory files present: README.md, README.de.md, CHANGELOG.md, LICENSE, pyproject.toml; dirs src/, tests/, .github/workflows/",
+        "Correct src-layout: pyproject packages = ['src/lindas_mcp']",
+        "CI workflows present; README.md and README.de.md have 1:1 matching section inventory"
+      ],
+      "gaps": [
+        "With 7 tools (>5), all tool definitions live in a single ~400-line server.py; no tools/ split and server.py exceeds the <200-line guideline (business logic is layered into lindas/, but tool bodies are not grouped)",
+        "This deviation from the tools/ standard is not explicitly justified in the README"
+      ]
+    },
+    "ARCH-012": {
+      "status": "partial",
+      "category": "ARCH",
+      "severity": "medium",
+      "evidence": [
+        "server.py:47 — mcp = FastMCP('lindas-mcp'); no protocol_version argument; grep for protocol_version|protocolVersion returns NONE",
+        "CHANGELOG.md present in Keep-a-Changelog + SemVer format",
+        ".github/dependabot.yml — pip ecosystem monthly ('keep protocol support current')"
+      ],
+      "gaps": [
+        "protocolVersion not pinned in server code (takes SDK default)",
+        "CHANGELOG entries do not reference any MCP spec/protocol-version bump",
+        "README has no 'MCP Protocol Version' section and no spec-update/breaking-change policy"
+      ]
+    },
+    "CH-004": {
+      "status": "pass",
+      "category": "CH",
+      "severity": "medium",
+      "evidence": [
+        "src/lindas_mcp/lindas/client.py — ATTRIBUTION constant naming LINDAS / Swiss Federal Archives and the per-cube licence caveat",
+        "src/lindas_mcp/models.py — LindasResponse base sets source=ATTRIBUTION; every tool result envelope inherits it",
+        "src/lindas_mcp/models.py — CubeStructureResult.licence and ObservationsResult.licence surface per-cube licence",
+        "README Credits: data source (Swiss Federal Archives / LINDAS), MIT code licence, and 'always surface the licence field' limitation"
+      ],
+      "gaps": [
+        "No single blanket CC BY table — correct, because LINDAS licences vary per cube (often Fedlex URIs), surfaced per record"
+      ]
+    },
+    "OBS-001": {
+      "status": "pass",
+      "category": "OBS",
+      "severity": "high",
+      "evidence": [
+        "src/lindas_mcp/lindas/client.py:40-45 — dedicated SparqlError (400/malformed) and UpstreamError (unreachable after retries) carry LLM-actionable diagnostics, distinguishing query errors from endpoint-down",
+        "src/lindas_mcp/lindas/client.py — HTTP 400 raises SparqlError with the endpoint's own diagnostic; UpstreamError carries an anchor hint after retries",
+        "src/lindas_mcp/server.py:263-293 — api_status explicitly catches (UpstreamError, SparqlError) and returns an evaluable StatusResult(reachable=False)",
+        "tests/test_cube_and_tools.py — api_status failure path (ConnectTimeout) and test_client.py malformed-query path covered"
+      ],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — typed errors -> FastMCP isError + graceful api_status; peer i14y-mcp passed the same pattern.",
+        "Only api_status catches upstream exceptions explicitly; the other 6 tools let SparqlError/UpstreamError bubble and rely on FastMCP's default isError conversion",
+        "No test exercises the protocol-error path (nonexistent tool / invalid args)"
+      ]
+    },
+    "OBS-002": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "high",
+      "evidence": [
+        "grep across src/ — no traceback / format_exc / sys.exc_info; no tool returns a stacktrace or raw exception dict",
+        "SparqlError message bounded to resp.text.strip()[:400]; api_status truncates to str(exc)[:200] — bounded, surfaces only public upstream diagnostics",
+        "No authentication and a single hard-coded public endpoint — no credentials/tokens/DB schema/file paths to leak"
+      ],
+      "gaps": [
+        "FastMCP is initialized without mask_error_details=True — an unhandled/unexpected exception in a tool would surface its raw Python message to the LLM via the framework default",
+        "No server-side log sink exists, so original error details are not preserved anywhere"
+      ]
+    },
+    "OBS-003": {
+      "status": "fail",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml — no structlog/loguru/logging framework declared",
+        "grep -rnE 'import logging|structlog|logger' src/ — NONE; the server has no logging module at all",
+        "src/lindas_mcp/server.py — the only textual output is a single print(..., file=sys.stderr) startup warning, not structured logging",
+        "No per-tool-call logging with tool name / session_id / correlation_id"
+      ],
+      "gaps": [
+        "No structured logger dependency; no JSON/logfmt output, no RFC 5424 severity levels; no bound context per tool call",
+        "The server deliberately emits nothing to keep the JSON-RPC stream clean, but OBS-003 is genuinely not met"
+      ]
+    },
+    "OBS-004": {
+      "status": "pass",
+      "category": "OBS",
+      "severity": "critical",
+      "evidence": [
+        "src/lindas_mcp/server.py — the only print() in src/ is explicitly routed to stderr (file=sys.stderr) for the 0.0.0.0 bind warning; stdout is never written to",
+        "grep -rnE 'print\\(|sys.stdout' src/ — sole print targets sys.stderr; no bare print(), no basicConfig(stream=sys.stdout)",
+        "No logging framework configured, so nothing can accidentally emit to stdout; the stdio JSON-RPC stream stays uncorrupted"
+      ],
+      "gaps": []
+    },
+    "OBS-006": {
+      "status": "todo",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "grep -rnE 'opentelemetry|otel|tracer' src/ pyproject.toml — NONE; no OpenTelemetry SDK, no TracerProvider, no OTLP exporter",
+        "No per-tool-call spans anywhere in server.py",
+        "No OTEL_* configuration in compose.yaml, Dockerfile, or docs",
+        "is_cloud_deployed==true applies (SSE/http transport + Dockerfile/compose), so the check applies and is unmet"
+      ],
+      "gaps": [
+        "Agent: fail. Reconciled to todo — distributed tracing is a deployment decision needing human judgment (peer baseline: todo).",
+        "No distributed tracing; acceptable for the primary local-stdio single-user case but absent for the supported cloud/remote mode"
+      ]
+    },
+    "OPS-001": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "tests/ offline suite uses respx HTTP mocking (@respx.mock throughout); ~8 tests in test_client.py + 13 in test_cube_and_tools.py",
+        "tests/test_cube_and_tools.py — 4 @pytest.mark.live tests hit the real endpoint",
+        "pyproject.toml markers=['live: ...']; .github/workflows/ci.yml runs pytest -m 'not live' across 3.10-3.13 + ruff; live.yml runs live on schedule + dispatch",
+        "Error-path tests: ConnectTimeout, 400-not-retried, 503-retried"
+      ],
+      "gaps": [
+        "Test files named test_client.py / test_cube_and_tools.py rather than the check's literal test_unit.py / test_live.py — substance correct, naming differs",
+        "Not every tool has a dedicated live test (list_publishers, run_sparql lack one)"
+      ]
+    },
+    "OPS-002": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "medium",
+      "evidence": [
+        "README.md — Anchor Demo Query with tool walkthrough; mirrored in README.de.md",
+        "README sections: Installation, Tools, config via env vars, Contributing & security, Known limitations (5), MIT licence + Credits",
+        "README Architecture ASCII diagram of Claude <-> lindas-mcp layers <-> endpoint; bilingual parity de/en",
+        "CHANGELOG follows Keep-a-Changelog + SemVer; CONTRIBUTING.md/.de.md present"
+      ],
+      "gaps": []
+    },
+    "OPS-003": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "docs/roadmap.md — 'Current phase: Phase 1 — Read-only' with a phase table and explicit phase-transition prerequisites",
+        "src/lindas_mcp/server.py — READ_ONLY applied to all 7 tools; phase declaration matches actual annotations, no destructive tools",
+        "README links docs/roadmap.md; roadmap references audits/ for open findings"
+      ],
+      "gaps": [
+        "Phase declared in docs/roadmap.md rather than inline in the README body (README links to the roadmap)"
+      ]
+    },
+    "SCALE-002": {
+      "status": "todo",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "compose.yaml — a single lindas-mcp service (one replica), no sticky-session or shared-state provision",
+        "grep for redis|memcached|session_manager|SessionStore in src/ returns NONE",
+        "No railway.toml/render.yaml/k8s/helm/haproxy/nginx config exists — no LB affinity config",
+        "src/lindas_mcp/server.py — _run_http runs a single uvicorn process with no shared session backend"
+      ],
+      "gaps": [
+        "Agent: fail. Reconciled to todo — horizontal-scale session affinity is a deployment decision (peer baseline: todo).",
+        "Neither sticky sessions on an edge LB nor a Redis/shared-state session manager is implemented",
+        "Single-container deployment only; horizontal-scale session continuity unaddressed"
+      ]
+    },
+    "SCALE-003": {
+      "status": "todo",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "No haproxy.cfg / nginx.conf / ingress yaml present in repo",
+        "No k8s/, helm/, or deploy/ directories exist",
+        "compose.yaml — only a single container with ports [8000:8000]; no edge LB reads Mcp-Session-Id"
+      ],
+      "gaps": [
+        "Agent: fail. Reconciled to todo — edge-LB session routing is a deployment decision (peer baseline: todo).",
+        "No edge-LB config that reads the Mcp-Session-Id header for routing",
+        "Repo provides only single-instance compose; the routing layer is entirely absent"
+      ]
+    },
+    "SCALE-004": {
+      "status": "pass",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "Dockerfile:3/17 — multi-stage build, both stages python:3.13-slim",
+        "Dockerfile — creates system mcp user/group and sets USER mcp (non-root runtime)",
+        "Dockerfile — HEALTHCHECK using stdlib TCP connect (socket.create_connection to PORT), no curl dependency",
+        "Runtime copies only the built /app/.venv from builder; EXPOSE 8000"
+      ],
+      "gaps": [
+        "Final image size not empirically measured, but slim base + venv-only copy implies compliance"
+      ]
+    },
+    "SCALE-006": {
+      "status": "pass",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "compose.yaml — mem_limit: 256m, cpus: 0.5, mem_reservation: 128m (request < limit)",
+        "compose.yaml — ulimits.nofile soft 4096 / hard 8192",
+        "compose.yaml — pids_limit: 128 and restart: unless-stopped"
+      ],
+      "gaps": [
+        "Uses compose v1-style mem_limit/cpus rather than deploy.resources, but honoured by docker compose v2; no functional gap"
+      ]
+    },
+    "SDK-001": {
+      "status": "partial",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "src/lindas_mcp/server.py:47 — mcp = FastMCP(\"lindas-mcp\") constructed with NO lifespan= argument",
+        "grep for asynccontextmanager|lifespan|AsyncExitStack across src/ returns NONE",
+        "src/lindas_mcp/lindas/client.py:76-88 — build_client() returns a brand-new httpx.AsyncClient on every call; no pooling reuse across tool calls",
+        "src/lindas_mcp/server.py — every tool opens `async with build_client() as http`, i.e. a fresh HTTP client per tool invocation"
+      ],
+      "gaps": [
+        "Agent: fail. Reconciled to partial — per-call client lifecycle is correct (async with) but not pooled via a lifespan (peer i14y-mcp implements a shared pooled client).",
+        "No @asynccontextmanager lifespan; FastMCP constructor lacks lifespan=",
+        "HTTP client created per tool call instead of once on server.state; no cross-call connection pooling"
+      ]
+    },
+    "SDK-002": {
+      "status": "pass",
+      "category": "SDK",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml — pydantic>=2.7 (Pydantic v2)",
+        "src/lindas_mcp/models.py:7 — imports BaseModel, ConfigDict, Field; v2 model_config = ConfigDict(extra=\"forbid\")",
+        "src/lindas_mcp/server.py — all 7 tools have explicit BaseModel return annotations",
+        "src/lindas_mcp/models.py — shared LindasResponse envelope with source/provenance/retrieved_at"
+      ],
+      "gaps": [
+        "Envelope field names vary per tool (returned+cubes, row_count+rows) rather than a literal results/count, though semantically consistent"
+      ]
+    },
+    "SDK-003": {
+      "status": "partial",
+      "category": "SDK",
+      "severity": "medium",
+      "evidence": [
+        "grep for Context|ctx across src/ returns NONE — no tool declares a ctx: Context parameter",
+        "grep for report_progress|ctx.info|ctx.warning returns NONE",
+        "src/lindas_mcp/server.py — run_sparql caps runtime at 30s with no Context/progress",
+        "src/lindas_mcp/lindas/client.py:41 — TIMEOUT_S=45.0; SPARQL tools routinely block seconds with no progress notification"
+      ],
+      "gaps": [
+        "Agent: fail. Reconciled to partial — tools are single awaited calls that work without Context, but no ctx/progress observability (peer i14y-mcp injects Context).",
+        "No Context parameter injected into any tool despite tools that can run 20-45s",
+        "Mitigating: tool bodies are single awaited network calls and do not use print()/stdlib logging, so stdout is not polluted"
+      ]
+    },
+    "SDK-004": {
+      "status": "partial",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "src/lindas_mcp/server.py — build_http_app() wraps mcp.sse_app()/streamable_http_app() with CORSMiddleware",
+        "expose_headers=[\"Mcp-Session-Id\"] present (the critical header exposure IS met)",
+        "allow_headers=[\"*\", \"Mcp-Session-Id\"]; allow_methods=[GET, POST, DELETE, OPTIONS]",
+        "allow_origins=[\"*\"] hardcoded wildcard, not env-driven"
+      ],
+      "gaps": [
+        "allow_origins=[\"*\"] is a hardcoded wildcard — pass criterion prefers an explicit origin list / env-configurable origins for production",
+        "allow_credentials not set (default False), so the wildcard is CORS-legal, but production-origin-hardening is unmet"
+      ]
+    },
+    "SEC-004": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — no user-supplied URL + fixed HTTPS endpoint + host allow-list = no SSRF surface (peer baseline pass); run_sparql SERVICE nuance documented."
+      ]
+    },
+    "SEC-005": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — sole hostname is a fixed trusted gov endpoint; peer baseline pass."
+      ]
+    },
+    "SEC-006": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-007": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — identical hardened Dockerfile/compose as peer i14y-mcp (which passed)."
+      ]
+    },
+    "SEC-008": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "medium",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-009": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — no auth model, so session crypto-binding is N/A (documented); peer baseline pass."
+      ]
+    },
+    "SEC-013": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-014": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "medium",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — tool allow-listing is a documented gateway/portfolio control; peer baseline pass."
+      ]
+    },
+    "SEC-015": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "medium",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — tool-poisoning detection is a documented gateway control; lock file guards rug-pull; peer baseline pass."
+      ]
+    },
+    "SEC-016": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-018": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-019": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-020": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "critical",
+      "evidence": [],
+      "gaps": []
+    },
+    "SEC-021": {
+      "status": "pass",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": [
+        "Agent: partial. Reconciled to pass — identical code-layer egress allow-list as peer i14y-mcp (which passed); network layer documented."
+      ]
+    },
+    "SEC-022": {
+      "status": "partial",
+      "category": "SEC",
+      "severity": "high",
+      "evidence": [],
+      "gaps": []
+    }
+  }
+}

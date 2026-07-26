@@ -1,0 +1,119 @@
+{
+  "results": {
+    "SDK-001": {
+      "status": "fail",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "src/lindas_mcp/server.py:47 — mcp = FastMCP(\"lindas-mcp\") constructed with NO lifespan= argument",
+        "grep for asynccontextmanager|lifespan|AsyncExitStack across src/ returns NONE",
+        "src/lindas_mcp/lindas/client.py:76-88 — build_client() returns a brand-new httpx.AsyncClient on every call; no pooling reuse across tool calls",
+        "src/lindas_mcp/server.py — every tool opens `async with build_client() as http`, i.e. a fresh HTTP client per tool invocation"
+      ],
+      "gaps": [
+        "No @asynccontextmanager lifespan; FastMCP constructor lacks lifespan=",
+        "HTTP client created per tool call instead of once on server.state; no cross-call connection pooling"
+      ]
+    },
+    "SDK-002": {
+      "status": "pass",
+      "category": "SDK",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml — pydantic>=2.7 (Pydantic v2)",
+        "src/lindas_mcp/models.py:7 — imports BaseModel, ConfigDict, Field; v2 model_config = ConfigDict(extra=\"forbid\")",
+        "src/lindas_mcp/server.py — all 7 tools have explicit BaseModel return annotations",
+        "src/lindas_mcp/models.py — shared LindasResponse envelope with source/provenance/retrieved_at"
+      ],
+      "gaps": [
+        "Envelope field names vary per tool (returned+cubes, row_count+rows) rather than a literal results/count, though semantically consistent"
+      ]
+    },
+    "SDK-003": {
+      "status": "fail",
+      "category": "SDK",
+      "severity": "medium",
+      "evidence": [
+        "grep for Context|ctx across src/ returns NONE — no tool declares a ctx: Context parameter",
+        "grep for report_progress|ctx.info|ctx.warning returns NONE",
+        "src/lindas_mcp/server.py — run_sparql caps runtime at 30s with no Context/progress",
+        "src/lindas_mcp/lindas/client.py:41 — TIMEOUT_S=45.0; SPARQL tools routinely block seconds with no progress notification"
+      ],
+      "gaps": [
+        "No Context parameter injected into any tool despite tools that can run 20-45s",
+        "Mitigating: tool bodies are single awaited network calls and do not use print()/stdlib logging, so stdout is not polluted"
+      ]
+    },
+    "SDK-004": {
+      "status": "partial",
+      "category": "SDK",
+      "severity": "high",
+      "evidence": [
+        "src/lindas_mcp/server.py — build_http_app() wraps mcp.sse_app()/streamable_http_app() with CORSMiddleware",
+        "expose_headers=[\"Mcp-Session-Id\"] present (the critical header exposure IS met)",
+        "allow_headers=[\"*\", \"Mcp-Session-Id\"]; allow_methods=[GET, POST, DELETE, OPTIONS]",
+        "allow_origins=[\"*\"] hardcoded wildcard, not env-driven"
+      ],
+      "gaps": [
+        "allow_origins=[\"*\"] is a hardcoded wildcard — pass criterion prefers an explicit origin list / env-configurable origins for production",
+        "allow_credentials not set (default False), so the wildcard is CORS-legal, but production-origin-hardening is unmet"
+      ]
+    },
+    "SCALE-002": {
+      "status": "fail",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "compose.yaml — a single lindas-mcp service (one replica), no sticky-session or shared-state provision",
+        "grep for redis|memcached|session_manager|SessionStore in src/ returns NONE",
+        "No railway.toml/render.yaml/k8s/helm/haproxy/nginx config exists — no LB affinity config",
+        "src/lindas_mcp/server.py — _run_http runs a single uvicorn process with no shared session backend"
+      ],
+      "gaps": [
+        "Neither sticky sessions on an edge LB nor a Redis/shared-state session manager is implemented",
+        "Single-container deployment only; horizontal-scale session continuity unaddressed"
+      ]
+    },
+    "SCALE-003": {
+      "status": "fail",
+      "category": "SCALE",
+      "severity": "high",
+      "evidence": [
+        "No haproxy.cfg / nginx.conf / ingress yaml present in repo",
+        "No k8s/, helm/, or deploy/ directories exist",
+        "compose.yaml — only a single container with ports [8000:8000]; no edge LB reads Mcp-Session-Id"
+      ],
+      "gaps": [
+        "No edge-LB config that reads the Mcp-Session-Id header for routing",
+        "Repo provides only single-instance compose; the routing layer is entirely absent"
+      ]
+    },
+    "SCALE-004": {
+      "status": "pass",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "Dockerfile:3/17 — multi-stage build, both stages python:3.13-slim",
+        "Dockerfile — creates system mcp user/group and sets USER mcp (non-root runtime)",
+        "Dockerfile — HEALTHCHECK using stdlib TCP connect (socket.create_connection to PORT), no curl dependency",
+        "Runtime copies only the built /app/.venv from builder; EXPOSE 8000"
+      ],
+      "gaps": [
+        "Final image size not empirically measured, but slim base + venv-only copy implies compliance"
+      ]
+    },
+    "SCALE-006": {
+      "status": "pass",
+      "category": "SCALE",
+      "severity": "medium",
+      "evidence": [
+        "compose.yaml — mem_limit: 256m, cpus: 0.5, mem_reservation: 128m (request < limit)",
+        "compose.yaml — ulimits.nofile soft 4096 / hard 8192",
+        "compose.yaml — pids_limit: 128 and restart: unless-stopped"
+      ],
+      "gaps": [
+        "Uses compose v1-style mem_limit/cpus rather than deploy.resources, but honoured by docker compose v2; no functional gap"
+      ]
+    }
+  }
+}

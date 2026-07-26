@@ -1,0 +1,127 @@
+{
+  "results": {
+    "OBS-001": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "high",
+      "evidence": [
+        "src/lindas_mcp/lindas/client.py:40-45 — dedicated SparqlError (400/malformed) and UpstreamError (unreachable after retries) carry LLM-actionable diagnostics, distinguishing query errors from endpoint-down",
+        "src/lindas_mcp/lindas/client.py — HTTP 400 raises SparqlError with the endpoint's own diagnostic; UpstreamError carries an anchor hint after retries",
+        "src/lindas_mcp/server.py:263-293 — api_status explicitly catches (UpstreamError, SparqlError) and returns an evaluable StatusResult(reachable=False)",
+        "tests/test_cube_and_tools.py — api_status failure path (ConnectTimeout) and test_client.py malformed-query path covered"
+      ],
+      "gaps": [
+        "Only api_status catches upstream exceptions explicitly; the other 6 tools let SparqlError/UpstreamError bubble and rely on FastMCP's default isError conversion",
+        "No test exercises the protocol-error path (nonexistent tool / invalid args)"
+      ]
+    },
+    "OBS-002": {
+      "status": "partial",
+      "category": "OBS",
+      "severity": "high",
+      "evidence": [
+        "grep across src/ — no traceback / format_exc / sys.exc_info; no tool returns a stacktrace or raw exception dict",
+        "SparqlError message bounded to resp.text.strip()[:400]; api_status truncates to str(exc)[:200] — bounded, surfaces only public upstream diagnostics",
+        "No authentication and a single hard-coded public endpoint — no credentials/tokens/DB schema/file paths to leak"
+      ],
+      "gaps": [
+        "FastMCP is initialized without mask_error_details=True — an unhandled/unexpected exception in a tool would surface its raw Python message to the LLM via the framework default",
+        "No server-side log sink exists, so original error details are not preserved anywhere"
+      ]
+    },
+    "OBS-003": {
+      "status": "fail",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "pyproject.toml — no structlog/loguru/logging framework declared",
+        "grep -rnE 'import logging|structlog|logger' src/ — NONE; the server has no logging module at all",
+        "src/lindas_mcp/server.py — the only textual output is a single print(..., file=sys.stderr) startup warning, not structured logging",
+        "No per-tool-call logging with tool name / session_id / correlation_id"
+      ],
+      "gaps": [
+        "No structured logger dependency; no JSON/logfmt output, no RFC 5424 severity levels; no bound context per tool call",
+        "The server deliberately emits nothing to keep the JSON-RPC stream clean, but OBS-003 is genuinely not met"
+      ]
+    },
+    "OBS-004": {
+      "status": "pass",
+      "category": "OBS",
+      "severity": "critical",
+      "evidence": [
+        "src/lindas_mcp/server.py — the only print() in src/ is explicitly routed to stderr (file=sys.stderr) for the 0.0.0.0 bind warning; stdout is never written to",
+        "grep -rnE 'print\\(|sys.stdout' src/ — sole print targets sys.stderr; no bare print(), no basicConfig(stream=sys.stdout)",
+        "No logging framework configured, so nothing can accidentally emit to stdout; the stdio JSON-RPC stream stays uncorrupted"
+      ],
+      "gaps": []
+    },
+    "OBS-006": {
+      "status": "fail",
+      "category": "OBS",
+      "severity": "medium",
+      "evidence": [
+        "grep -rnE 'opentelemetry|otel|tracer' src/ pyproject.toml — NONE; no OpenTelemetry SDK, no TracerProvider, no OTLP exporter",
+        "No per-tool-call spans anywhere in server.py",
+        "No OTEL_* configuration in compose.yaml, Dockerfile, or docs",
+        "is_cloud_deployed==true applies (SSE/http transport + Dockerfile/compose), so the check applies and is unmet"
+      ],
+      "gaps": [
+        "No distributed tracing; acceptable for the primary local-stdio single-user case but absent for the supported cloud/remote mode"
+      ]
+    },
+    "OPS-001": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "tests/ offline suite uses respx HTTP mocking (@respx.mock throughout); ~8 tests in test_client.py + 13 in test_cube_and_tools.py",
+        "tests/test_cube_and_tools.py — 4 @pytest.mark.live tests hit the real endpoint",
+        "pyproject.toml markers=['live: ...']; .github/workflows/ci.yml runs pytest -m 'not live' across 3.10-3.13 + ruff; live.yml runs live on schedule + dispatch",
+        "Error-path tests: ConnectTimeout, 400-not-retried, 503-retried"
+      ],
+      "gaps": [
+        "Test files named test_client.py / test_cube_and_tools.py rather than the check's literal test_unit.py / test_live.py — substance correct, naming differs",
+        "Not every tool has a dedicated live test (list_publishers, run_sparql lack one)"
+      ]
+    },
+    "OPS-002": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "medium",
+      "evidence": [
+        "README.md — Anchor Demo Query with tool walkthrough; mirrored in README.de.md",
+        "README sections: Installation, Tools, config via env vars, Contributing & security, Known limitations (5), MIT licence + Credits",
+        "README Architecture ASCII diagram of Claude <-> lindas-mcp layers <-> endpoint; bilingual parity de/en",
+        "CHANGELOG follows Keep-a-Changelog + SemVer; CONTRIBUTING.md/.de.md present"
+      ],
+      "gaps": []
+    },
+    "OPS-003": {
+      "status": "pass",
+      "category": "OPS",
+      "severity": "high",
+      "evidence": [
+        "docs/roadmap.md — 'Current phase: Phase 1 — Read-only' with a phase table and explicit phase-transition prerequisites",
+        "src/lindas_mcp/server.py — READ_ONLY applied to all 7 tools; phase declaration matches actual annotations, no destructive tools",
+        "README links docs/roadmap.md; roadmap references audits/ for open findings"
+      ],
+      "gaps": [
+        "Phase declared in docs/roadmap.md rather than inline in the README body (README links to the roadmap)"
+      ]
+    },
+    "CH-004": {
+      "status": "pass",
+      "category": "CH",
+      "severity": "medium",
+      "evidence": [
+        "src/lindas_mcp/lindas/client.py — ATTRIBUTION constant naming LINDAS / Swiss Federal Archives and the per-cube licence caveat",
+        "src/lindas_mcp/models.py — LindasResponse base sets source=ATTRIBUTION; every tool result envelope inherits it",
+        "src/lindas_mcp/models.py — CubeStructureResult.licence and ObservationsResult.licence surface per-cube licence",
+        "README Credits: data source (Swiss Federal Archives / LINDAS), MIT code licence, and 'always surface the licence field' limitation"
+      ],
+      "gaps": [
+        "No single blanket CC BY table — correct, because LINDAS licences vary per cube (often Fedlex URIs), surfaced per record"
+      ]
+    }
+  }
+}
