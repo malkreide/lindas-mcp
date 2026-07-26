@@ -49,6 +49,13 @@ unauthenticated, and reaches only one trusted public-data endpoint.
   (SEC-022), so any silent change to the tool set or a tool's contract fails the
   build. When aggregated behind a shared gateway, enable the gateway's tool
   allow-listing and tool-poisoning detection.
+- **Tool-name namespacing** (SEC-022) — tool names are intentionally left
+  unprefixed (`search_cubes`, not `lindas__search_cubes`) for consistency across
+  the Swiss Public Data MCP portfolio. Cross-server tool-shadowing is a
+  multi-server concern handled at the aggregating gateway; within this single,
+  in-repo, PR-reviewed server the `tool-definitions.lock.json` hash guard already
+  prevents silent tool-surface changes. Accepted as a portfolio-level control; if
+  the portfolio adopts prefixing, it will be applied uniformly across all servers.
 - **Network binding for hosted deployments** — the SSE / streamable-http
   transport binds to `HOST`, defaulting to `127.0.0.1` (loopback). Binding to
   `0.0.0.0` is an explicit opt-in (the container image sets it on purpose) and
