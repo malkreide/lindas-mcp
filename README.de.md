@@ -51,6 +51,10 @@ query_cube_observations(cube_uri=...)
 Die Codes kommen als Labels zurück — «grosse Gefahr», nicht `4`. Und die Lizenz
 ist eine Fedlex-URI, die du mit [fedlex-mcp](https://github.com/malkreide/fedlex-mcp) auflösen kannst.
 
+### Demo
+
+![Demo: Claude nutzt search_cubes, get_cube_structure und query_cube_observations](docs/assets/demo.svg)
+
 ---
 
 ## Der Zwei-Phasen-Zugriff
@@ -235,16 +239,33 @@ Live-Test abgedeckt.
 
 ---
 
-## Mitwirken & Sicherheit
+## Mitwirken
 
-- [`CONTRIBUTING.de.md`](CONTRIBUTING.de.md) — Grundregeln (read-only, ein
-  Egress-Host, verankerte Queries) und die lokale Dev-Schleife.
-- [`SECURITY.de.md`](SECURITY.de.md) — Sicherheits-Posture und wie man eine
-  Schwachstelle meldet.
-- [`EXAMPLES.md`](EXAMPLES.md) — Anwendungsfälle nach Zielgruppe, mit der
-  Tool-Auswahl-Tabelle.
-- [`PUBLISHING.md`](PUBLISHING.md) — der PyPI-/MCP-Registry-Release-Prozess.
-- [`docs/roadmap.md`](docs/roadmap.md) — Projektphase und was Phase 2 voraussetzt.
+Siehe [`CONTRIBUTING.de.md`](CONTRIBUTING.de.md) für die Grundregeln (read-only,
+ein Egress-Host, verankerte Queries) und die lokale Dev-Schleife. Weiterführend:
+[`EXAMPLES.md`](EXAMPLES.md) für Anwendungsfälle nach Zielgruppe mit der
+Tool-Auswahl-Tabelle, [`docs/roadmap.md`](docs/roadmap.md) für die Projektphase
+und [`PUBLISHING.md`](PUBLISHING.md) für den PyPI-/MCP-Registry-Release-Prozess.
+
+---
+
+## Sicherheit
+
+Siehe [`SECURITY.de.md`](SECURITY.de.md) für die Sicherheits-Posture und die
+Meldung von Schwachstellen.
+
+---
+
+## Lizenz
+
+MIT-Lizenz — siehe [LICENSE](LICENSE). Die LINDAS-Daten unterliegen weiterhin
+der Lizenz, die der jeweilige Publisher am Cube deklariert.
+
+---
+
+## Autor
+
+**Hayal Oezkan** · [github.com/malkreide](https://github.com/malkreide)
 
 ---
 

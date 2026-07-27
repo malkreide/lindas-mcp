@@ -50,6 +50,10 @@ query_cube_observations(cube_uri=...)
 The codes come back as labels — «grosse Gefahr», not `4`. And the licence is a
 Fedlex URI you can resolve with [fedlex-mcp](https://github.com/malkreide/fedlex-mcp).
 
+### Demo
+
+![Demo: Claude using search_cubes, get_cube_structure and query_cube_observations](docs/assets/demo.svg)
+
 ---
 
 ## The two-phase access pattern
@@ -234,14 +238,33 @@ structural assumption that a mock cannot validate. It is covered by a live test.
 
 ---
 
-## Contributing & security
+## Contributing
 
-- [`CONTRIBUTING.md`](CONTRIBUTING.md) — ground rules (read-only, one egress
-  host, anchored queries) and the local dev loop.
-- [`SECURITY.md`](SECURITY.md) — security posture and how to report a vulnerability.
-- [`EXAMPLES.md`](EXAMPLES.md) — use cases by audience, with the tool-selection table.
-- [`PUBLISHING.md`](PUBLISHING.md) — the PyPI / MCP Registry release process.
-- [`docs/roadmap.md`](docs/roadmap.md) — project phase and what Phase 2 would require.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the ground rules (read-only, one
+egress host, anchored queries) and the local dev loop. Further reading:
+[`EXAMPLES.md`](EXAMPLES.md) for use cases by audience with the tool-selection
+table, [`docs/roadmap.md`](docs/roadmap.md) for the project phase, and
+[`PUBLISHING.md`](PUBLISHING.md) for the PyPI / MCP Registry release process.
+
+---
+
+## Security
+
+See [`SECURITY.md`](SECURITY.md) for the security posture and how to report a
+vulnerability.
+
+---
+
+## License
+
+MIT License — see [LICENSE](LICENSE). The LINDAS data remains subject to the
+licence each publisher declares on the cube.
+
+---
+
+## Author
+
+**Hayal Oezkan** · [github.com/malkreide](https://github.com/malkreide)
 
 ---
 
