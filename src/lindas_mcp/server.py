@@ -23,7 +23,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, Literal, TypeVar
 
-from mcp.server.fastmcp import Context, FastMCP
+from mcp.server.mcpserver import Context, MCPServer
 from pydantic import Field
 
 from .lindas import cube
@@ -54,7 +54,7 @@ from .models import (
 
 
 @asynccontextmanager
-async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
+async def _lifespan(_server: MCPServer) -> AsyncIterator[None]:
     """SDK-001: build one pooled httpx client for the process lifetime and share
     it across all tool calls, instead of opening a fresh client per call."""
     async with build_client() as http:
@@ -67,7 +67,7 @@ async def _lifespan(_server: FastMCP) -> AsyncIterator[None]:
             logger.info("lindas_mcp.shutdown")
 
 
-mcp = FastMCP("lindas-mcp", lifespan=_lifespan)
+mcp = MCPServer("lindas-mcp", lifespan=_lifespan)
 
 Language = Literal["de", "fr", "it", "rm", "en"]
 
@@ -451,7 +451,7 @@ async def tool_manifest() -> dict[str, Any]:
     """
     tools = sorted(await mcp.list_tools(), key=lambda t: t.name)
     entries = [
-        {"name": tool.name, **_stable_signature(tool.inputSchema or {})} for tool in tools
+        {"name": tool.name, **_stable_signature(tool.input_schema or {})} for tool in tools
     ]
     combined = hashlib.sha256(
         _json.dumps(entries, sort_keys=True, ensure_ascii=False).encode("utf-8")
@@ -512,7 +512,7 @@ def build_transport_security(host: str, port: int):
 def build_http_app(transport: str) -> Any:
     """Build the SSE / streamable-http ASGI app with CORS configured.
 
-    FastMCP.run() serves the ASGI app without CORS, so browser clients cannot
+    MCPServer.run() serves the ASGI app without CORS, so browser clients cannot
     read the `Mcp-Session-Id` response header and lose their session (SDK-004).
     We build the app ourselves and expose that header via CORS.
     """
