@@ -469,6 +469,46 @@ async def tool_manifest() -> dict[str, Any]:
 # --------------------------------------------------------------------------
 
 
+def build_transport_security(host: str, port: int):
+    """Host/Origin allow-list for the HTTP/SSE transports (SEC-005, inbound).
+
+    The SDK leaves DNS-rebinding protection OFF while ``transport_security`` is
+    unset — its own source says "If not specified, disable DNS rebinding
+    protection by default for backwards compatibility". Unset therefore means
+    no Host and no Origin validation at all.
+
+    Returns ``None`` when no allow-list can be derived: a non-loopback bind
+    with no ``LINDAS_MCP_ALLOWED_HOSTS``. The server is then reached under a
+    service or public DNS name this process does not know, and a guessed list
+    would reject every real request with HTTP 421. The caller warns instead.
+    """
+    from mcp.server.transport_security import TransportSecuritySettings
+
+    allowed = [h.strip() for h in os.getenv("LINDAS_MCP_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    loopback = {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+    if allowed:
+        # Loopback stays reachable for container health checks and debugging.
+        hosts = set(allowed) | loopback
+    elif host in ("127.0.0.1", "localhost", "::1"):
+        hosts = loopback | {f"{host}:{port}"}
+    else:
+        return None
+
+    # Configured CORS origins must also pass the transport check, or the server
+    # rejects exactly the browser clients CORS permits. "*" cannot be expressed
+    # here (origins are matched literally, only a trailing ":*" port wildcard
+    # exists), so it is not copied across.
+    raw_origins = os.getenv("ALLOWED_ORIGINS", "")
+    configured = [o.strip() for o in raw_origins.split(",") if o.strip()]
+    origins = {o for o in configured if o != "*"}
+    origins |= {f"http://{h}" for h in hosts}
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=sorted(hosts),
+        allowed_origins=sorted(origins),
+    )
+
+
 def build_http_app(transport: str) -> Any:
     """Build the SSE / streamable-http ASGI app with CORS configured.
 
@@ -501,6 +541,15 @@ def _run_http(transport: str, host: str, port: int) -> None:
     """Serve the CORS-wrapped SSE / streamable-http app with uvicorn."""
     import uvicorn
 
+    security = build_transport_security(host, port)
+    if security is None:
+        logger.warning(
+            "dns_rebinding_protection_off",
+            host=host,
+            hint="Set LINDAS_MCP_ALLOWED_HOSTS to the hostnames this server is "
+            "reachable under; without it the Host header is not checked at all.",
+        )
+    mcp.settings.transport_security = security
     uvicorn.run(build_http_app(transport), host=host, port=port, log_level="info")
 
 
