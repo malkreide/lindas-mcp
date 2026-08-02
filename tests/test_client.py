@@ -90,9 +90,9 @@ async def test_connect_error_names_the_type_and_withholds_the_hint():
         with pytest.raises(c.UpstreamError) as exc:
             await c.run_query(http, "SELECT ?s WHERE {}")
     msg = str(exc.value)
-    assert "ConnectError" in msg          # Typ überlebt die leere Message
-    assert "lindas.admin.ch" in msg       # Ziel benannt
-    assert "anchor" not in msg.lower()    # keine Ursachenbehauptung ohne Grundlage
+    assert "ConnectError" in msg  # Typ überlebt die leere Message
+    assert "lindas.admin.ch" in msg  # Ziel benannt
+    assert "anchor" not in msg.lower()  # keine Ursachenbehauptung ohne Grundlage
     assert isinstance(exc.value.__cause__, httpx.ConnectError)
 
 

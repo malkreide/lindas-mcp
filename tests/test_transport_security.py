@@ -58,7 +58,7 @@ def test_port_is_honoured(monkeypatch):
 
 
 def test_wildcard_is_not_copied_into_allowed_origins(monkeypatch):
-    """"*" is matched literally by the SDK, so copying it would look like a
+    """ "*" is matched literally by the SDK, so copying it would look like a
     wildcard while doing nothing."""
     monkeypatch.delenv("LINDAS_MCP_ALLOWED_HOSTS", raising=False)
     sec = build_transport_security("127.0.0.1", 8000)

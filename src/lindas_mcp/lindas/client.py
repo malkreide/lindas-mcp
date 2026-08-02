@@ -122,10 +122,13 @@ def retry_delay(attempt: int, last_error: Exception | None) -> float:
     """
     hinted = parse_retry_after(getattr(last_error, "response", None))
     if hinted is not None:
-        capped = min(hinted, MAX_DELAY_S)
-        return capped * (1.0 + random.random() * RETRY_AFTER_JITTER)
-    capped = min(float(2**attempt), MAX_DELAY_S)
-    return capped * (1.0 - JITTER_SPREAD + random.random() * 2 * JITTER_SPREAD)
+        jittered = hinted * (1.0 + random.random() * RETRY_AFTER_JITTER)
+    else:
+        jittered = float(2**attempt) * (1.0 - JITTER_SPREAD + random.random() * 2 * JITTER_SPREAD)
+    # Cap *after* jitter. The other order made MAX_DELAY_S not a bound at all:
+    # a value capped at 20s was then multiplied by up to 1.5 and landed at 30s.
+    return min(jittered, MAX_DELAY_S)
+
 
 # Queries longer than this are sent via POST to avoid URL-length limits.
 GET_QUERY_LIMIT = 1500
@@ -252,16 +255,23 @@ async def run_query(
         # The budget wins over the per-request ceiling once it is the tighter of
         # the two — otherwise a single slow query could outlast the allowance.
         request_timeout = min(effective_timeout, remaining)
+        # httpx applies its timeout per operation (connect/read/write/pool) and
+        # the read timeout restarts with every chunk — that bounds each step, not
+        # the call, so a slowly trickling answer could outlast the budget.
+        # `asyncio.wait_for` is the wall-clock deadline the budget actually
+        # promises; `asyncio.timeout` would read better but arrived in 3.11 and
+        # this package still supports 3.10.
+        if use_post:
+            _request = http.post(
+                ENDPOINT,
+                content=query.encode("utf-8"),
+                headers={"Content-Type": "application/sparql-query"},
+                timeout=request_timeout,
+            )
+        else:
+            _request = http.get(ENDPOINT, params={"query": query}, timeout=request_timeout)
         try:
-            if use_post:
-                resp = await http.post(
-                    ENDPOINT,
-                    content=query.encode("utf-8"),
-                    headers={"Content-Type": "application/sparql-query"},
-                    timeout=request_timeout,
-                )
-            else:
-                resp = await http.get(ENDPOINT, params={"query": query}, timeout=request_timeout)
+            resp = await asyncio.wait_for(_request, timeout=remaining)
 
             if resp.status_code == 400:
                 raise SparqlError(f"LINDAS rejected the query: {resp.text.strip()[:400]}")
@@ -269,6 +279,9 @@ async def run_query(
             _record_success()
             return _parse_bindings(resp.json())
 
+        except (asyncio.TimeoutError, TimeoutError) as exc:  # Budget aufgebraucht
+            last_error = exc
+            break
         except SparqlError:
             raise
         except httpx.HTTPStatusError as exc:
