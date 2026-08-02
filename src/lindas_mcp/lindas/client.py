@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import datetime as _dt
 import random
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -54,6 +55,25 @@ MAX_ATTEMPTS = 4
 # grow without bound, and a `Retry-After` the store is entitled to send but that
 # we are not obliged to sit through.
 MAX_DELAY_S = 20.0
+
+# Ceiling on the *whole* call — every attempt, every wait, together.
+#
+# An attempt count is not a bound: four attempts at a 45s timeout plus backoff
+# are over three minutes, and `MAX_ATTEMPTS = 4` never says so.
+#
+# **This value deliberately exceeds the MCP client default.** The Python MCP SDK
+# ships `MCP_DEFAULT_TIMEOUT = 30.0` for general operations
+# (`mcp/shared/_httpx_utils.py`), and sibling servers in this portfolio
+# (`swiss-efv-mcp`, `termdat-mcp`) sit at 25s to stay under it. LINDAS is the
+# exception on purpose: it serves SPARQL, not a fixed dump. The store aborts
+# expensive queries itself at 60-90s, and `TIMEOUT_S = 45.0` exists to cut in
+# front of that. A budget under 30s would abort legitimate queries that succeed
+# today — trading a real capability for conformance with a default.
+#
+# The consequence is accepted, not overlooked: a caller running the SDK default
+# may give up before a slow query returns. The bound that matters here is the
+# store's own abort window, and 45s stays inside it.
+TOTAL_BUDGET_S = 45.0
 
 # Jitter spread. Without it every client that hit the same outage retries in
 # lockstep, and the load returns as a wave exactly when the store recovers —
@@ -194,6 +214,7 @@ async def run_query(
     query: str,
     *,
     timeout_s: float | None = None,
+    total_budget: float | None = None,
 ) -> list[dict[str, Any]]:
     """Execute a SPARQL SELECT/ASK query and return flat result rows.
 
@@ -203,24 +224,44 @@ async def run_query(
     A 400 is a query error — it is raised immediately, never retried, and
     carries the endpoint's own diagnostic so the caller can see what was
     malformed.
+
+    ``total_budget`` bounds the whole call — attempts and waits together —
+    defaulting to :data:`TOTAL_BUDGET_S`. See the note there on why it sits
+    above the MCP client default rather than under it.
     """
     use_post = len(query) > GET_QUERY_LIMIT
     last_error: Exception | None = None
     effective_timeout = timeout_s or TIMEOUT_S
+    budget = TOTAL_BUDGET_S if total_budget is None else total_budget
+    # Monotonic, not wall-clock: an NTP step must not hand out or revoke budget.
+    deadline = time.monotonic() + budget
+    attempts = 0
 
     for attempt in range(MAX_ATTEMPTS):
         if attempt > 0:
-            await asyncio.sleep(retry_delay(attempt, last_error))
+            delay = retry_delay(attempt, last_error)
+            # A wait that outlasts the budget is a wait for nobody: the caller
+            # has given up by the time it ends. Stop instead.
+            if delay >= deadline - time.monotonic():
+                break
+            await asyncio.sleep(delay)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            break
+        attempts += 1
+        # The budget wins over the per-request ceiling once it is the tighter of
+        # the two — otherwise a single slow query could outlast the allowance.
+        request_timeout = min(effective_timeout, remaining)
         try:
             if use_post:
                 resp = await http.post(
                     ENDPOINT,
                     content=query.encode("utf-8"),
                     headers={"Content-Type": "application/sparql-query"},
-                    timeout=effective_timeout,
+                    timeout=request_timeout,
                 )
             else:
-                resp = await http.get(ENDPOINT, params={"query": query}, timeout=effective_timeout)
+                resp = await http.get(ENDPOINT, params={"query": query}, timeout=request_timeout)
 
             if resp.status_code == 400:
                 raise SparqlError(f"LINDAS rejected the query: {resp.text.strip()[:400]}")
@@ -238,6 +279,11 @@ async def run_query(
         except httpx.RequestError as exc:
             last_error = exc
 
+    if last_error is None:  # budget gone before a single request went out
+        raise UpstreamError(
+            f"LINDAS not queried: {budget:g}s budget already spent "
+            f"(host={urlsplit(ENDPOINT).hostname})."
+        )
     # OBS-007: httpx timeout/connect errors carry an empty str(), so the type
     # has to be named explicitly — otherwise this message read "Last error: ."
     detail = str(last_error) or "no further detail"
@@ -251,8 +297,16 @@ async def run_query(
         if isinstance(last_error, httpx.ReadTimeout)
         else ""
     )
+    # Which limit ran out is part of the diagnosis: "all 4 attempts used" and
+    # "the budget ran out after 2" call for different fixes — more patience in
+    # the first case, a faster query or a wider budget in the second.
+    why = (
+        f"all {MAX_ATTEMPTS} attempts used"
+        if attempts >= MAX_ATTEMPTS
+        else f"{budget:g}s budget spent"
+    )
     raise UpstreamError(
-        f"LINDAS unreachable after {MAX_ATTEMPTS} attempts "
+        f"LINDAS unreachable after {attempts} attempt(s), {why} "
         f"(host={urlsplit(ENDPOINT).hostname}): "
         f"{type(last_error).__name__}: {detail}.{hint} "
         f"Last success: {last_success() or 'none this session'}."
