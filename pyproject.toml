@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "lindas-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "MCP server for LINDAS — the Swiss administration's linked-data knowledge graph"
 readme = "README.md"
 license = { text = "MIT" }
