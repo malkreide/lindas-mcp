@@ -7,6 +7,7 @@ wait must not run under a fixture whose whole job is to make waiting free.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
 
@@ -15,6 +16,9 @@ import pytest
 import respx
 
 from lindas_mcp.lindas import client as c
+
+#: Captured before any fixture can patch `asyncio.sleep`.
+_REAL_SLEEP = asyncio.sleep
 
 EP = c.ENDPOINT
 
@@ -69,24 +73,36 @@ class TestRetryDelay:
             assert c.retry_delay(1, exc) >= 5.0
 
     def test_absurd_retry_after_is_capped(self):
-        # Both bounds matter: the upper proves the cap binds, the lower proves
-        # the header was read at all — without it the curve's 2s would pass.
+        # Exactly the cap, not "the cap times jitter": capping happens after
+        # jitter, otherwise MAX_DELAY_S would not be a bound at all. Equality
+        # still discriminates — the bare curve gives 2s here.
         exc = httpx.HTTPStatusError("503", request=None, response=_resp(503, "86400"))
-        delay = c.retry_delay(1, exc)
-        assert c.MAX_DELAY_S <= delay <= c.MAX_DELAY_S * (1 + c.RETRY_AFTER_JITTER)
+        assert c.retry_delay(1, exc) == c.MAX_DELAY_S
 
     def test_exponential_ladder_is_capped(self):
         # 2**10 would be 1024s without a cap.
-        assert c.retry_delay(10, None) <= c.MAX_DELAY_S * (1 + c.JITTER_SPREAD)
+        for _ in range(30):
+            assert c.retry_delay(10, None) <= c.MAX_DELAY_S
+
+    def test_the_cap_is_a_real_bound_not_a_midpoint(self):
+        """MAX_DELAY_S must hold even when jitter swings up.
+
+        Capping before jitter let a 20s ceiling grow to 30s on the exponential
+        path and 25s on the ``Retry-After`` path. Found by a Codex review on
+        ``parlament-mcp#35``, on the same pattern.
+        """
+        exc = httpx.HTTPStatusError("429", request=None, response=_resp(429, "86400"))
+        for attempt in range(1, 8):
+            for _ in range(20):
+                assert c.retry_delay(attempt, None) <= c.MAX_DELAY_S
+                assert c.retry_delay(attempt, exc) <= c.MAX_DELAY_S
 
     def test_delay_is_spread(self):
         """Without jitter every client retries in lockstep. Draws must differ."""
         draws = {c.retry_delay(2, None) for _ in range(30)}
         assert len(draws) > 1, "delay is deterministic — jitter is not applied"
         base = 4.0
-        assert all(
-            base * (1 - c.JITTER_SPREAD) <= d <= base * (1 + c.JITTER_SPREAD) for d in draws
-        )
+        assert all(base * (1 - c.JITTER_SPREAD) <= d <= base * (1 + c.JITTER_SPREAD) for d in draws)
 
 
 @respx.mock
@@ -233,3 +249,31 @@ def test_budget_deliberately_exceeds_the_mcp_client_default():
     assert c.TOTAL_BUDGET_S > MCP_DEFAULT_TIMEOUT
     assert c.TOTAL_BUDGET_S == c.TIMEOUT_S  # budget matches the per-request ceiling
     assert c.TOTAL_BUDGET_S < 60.0  # stays inside the store's own abort window
+
+
+@respx.mock
+async def test_a_slow_response_is_cut_by_the_wall_clock_deadline():
+    """The budget must bind even when the httpx timeout never fires.
+
+    httpx applies its timeout per operation and the read timeout restarts with
+    every chunk, so a slowly trickling answer can outlast the total budget
+    without any single read timing out.
+
+    Deliberately without ``fake_clock``, and with ``_REAL_SLEEP`` rather than
+    ``asyncio.sleep``: a guarantee about real time cannot be refuted by a clock
+    or a sleep that has been patched out. That blind spot is why the original
+    counter-checks missed this.
+    """
+    import time as real_time
+
+    async def _slow(request):
+        await _REAL_SLEEP(1.0)
+        return httpx.Response(200, json={"head": {"vars": []}, "results": {"bindings": []}})
+
+    respx.get(EP).mock(side_effect=_slow)
+    started = real_time.monotonic()
+    async with c.build_client() as http:
+        with pytest.raises(c.UpstreamError):
+            await c.run_query(http, "SELECT ?s WHERE {}", total_budget=0.05)
+    elapsed = real_time.monotonic() - started
+    assert elapsed < 0.5, f"deadline did not cut: {elapsed:.2f}s"

@@ -450,9 +450,7 @@ async def tool_manifest() -> dict[str, Any]:
     mcp/pydantic patch upgrades. Docstrings are governed by PR review + CHANGELOG.
     """
     tools = sorted(await mcp.list_tools(), key=lambda t: t.name)
-    entries = [
-        {"name": tool.name, **_stable_signature(tool.input_schema or {})} for tool in tools
-    ]
+    entries = [{"name": tool.name, **_stable_signature(tool.input_schema or {})} for tool in tools]
     combined = hashlib.sha256(
         _json.dumps(entries, sort_keys=True, ensure_ascii=False).encode("utf-8")
     ).hexdigest()
