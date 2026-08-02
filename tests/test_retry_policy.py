@@ -7,7 +7,7 @@ wait must not run under a fixture whose whole job is to make waiting free.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
 
 import httpx
@@ -29,13 +29,13 @@ class TestParseRetryAfter:
         assert c.parse_retry_after(_resp(429, "120")) == 120.0
 
     def test_http_date_in_the_future(self):
-        when = datetime.now(UTC) + timedelta(seconds=90)
+        when = datetime.now(timezone.utc) + timedelta(seconds=90)
         got = c.parse_retry_after(_resp(503, format_datetime(when, usegmt=True)))
         assert got is not None
         assert 80 <= got <= 95  # second-resolution header, allow slack
 
     def test_http_date_in_the_past_means_now(self):
-        when = datetime.now(UTC) - timedelta(hours=1)
+        when = datetime.now(timezone.utc) - timedelta(hours=1)
         assert c.parse_retry_after(_resp(503, format_datetime(when, usegmt=True))) == 0.0
 
     def test_absent_header(self):

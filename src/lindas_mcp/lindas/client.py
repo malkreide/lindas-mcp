@@ -15,7 +15,7 @@ import datetime as _dt
 import random
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
 from urllib.parse import urlsplit
@@ -90,8 +90,8 @@ def parse_retry_after(resp: httpx.Response | None) -> float | None:
     if when is None:
         return None
     if when.tzinfo is None:  # RFC 9110 dates are GMT; a naive one means UTC
-        when = when.replace(tzinfo=UTC)
-    return max(0.0, (when - datetime.now(UTC)).total_seconds())  # past date -> now
+        when = when.replace(tzinfo=timezone.utc)
+    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())  # past -> now
 
 
 def retry_delay(attempt: int, last_error: Exception | None) -> float:
