@@ -145,3 +145,91 @@ async def test_404_still_fails_fast_without_waiting(monkeypatch):
             await c.run_query(http, "SELECT ?s WHERE {}")
     assert route.call_count == 1
     assert slept == []
+
+
+# --- total budget (ARCH-014) ------------------------------------------------
+
+
+@pytest.fixture
+def fake_clock(monkeypatch):
+    """A clock that only advances when the client sleeps.
+
+    Without it the budget can never run out in a test: patched-out sleeps take
+    no wall-clock time, so ``time.monotonic()`` never moves and every deadline
+    holds forever. The test would then pass whatever the budget logic did.
+    """
+    now = {"t": 1000.0}
+
+    async def _sleep(seconds):
+        now["t"] += seconds
+
+    monkeypatch.setattr(c.time, "monotonic", lambda: now["t"])
+    monkeypatch.setattr(c.asyncio, "sleep", _sleep)
+    return now
+
+
+@respx.mock
+async def test_budget_cuts_the_ladder_short(fake_clock):
+    """Fewer than MAX_ATTEMPTS requests go out once the waits outlast the budget."""
+    route = respx.get(EP).mock(side_effect=httpx.ConnectTimeout(""))
+    async with c.build_client() as http:
+        with pytest.raises(c.UpstreamError) as exc_info:
+            await c.run_query(http, "SELECT ?s WHERE {}", total_budget=3.0)
+    assert route.call_count < c.MAX_ATTEMPTS, "budget did not bound the ladder"
+    assert route.call_count >= 1, "the first attempt must always go out"
+    assert "budget spent" in str(exc_info.value)
+    assert "3s" in str(exc_info.value)
+
+
+@respx.mock
+async def test_full_ladder_runs_when_the_budget_allows(fake_clock):
+    """Counter-direction: a wide budget must not cut anything short."""
+    route = respx.get(EP).mock(side_effect=httpx.ConnectTimeout(""))
+    async with c.build_client() as http:
+        with pytest.raises(c.UpstreamError) as exc_info:
+            await c.run_query(http, "SELECT ?s WHERE {}", total_budget=600.0)
+    assert route.call_count == c.MAX_ATTEMPTS
+    assert "all 4 attempts used" in str(exc_info.value)
+
+
+@respx.mock
+async def test_per_request_timeout_is_clamped_to_the_remaining_budget(fake_clock):
+    """A single query may not be granted more time than the budget has left."""
+    route = respx.get(EP).mock(
+        return_value=httpx.Response(200, json={"head": {"vars": []}, "results": {"bindings": []}})
+    )
+    async with c.build_client() as http:
+        await c.run_query(http, "SELECT ?s WHERE {}", total_budget=4.0)
+    sent = route.calls.last.request.extensions["timeout"]
+    assert sent["read"] == pytest.approx(4.0), sent
+
+
+@respx.mock
+async def test_explicit_timeout_still_wins_when_it_is_tighter(fake_clock):
+    """`timeout_s` is not overridden by the budget — the smaller of the two wins."""
+    route = respx.get(EP).mock(
+        return_value=httpx.Response(200, json={"head": {"vars": []}, "results": {"bindings": []}})
+    )
+    async with c.build_client() as http:
+        await c.run_query(http, "SELECT ?s WHERE {}", timeout_s=2.0, total_budget=600.0)
+    sent = route.calls.last.request.extensions["timeout"]
+    assert sent["read"] == pytest.approx(2.0), sent
+
+
+def test_budget_deliberately_exceeds_the_mcp_client_default():
+    """LINDAS is the portfolio's documented exception — pin it as a decision.
+
+    Sibling servers (`swiss-efv-mcp`, `termdat-mcp`) keep their budget *under*
+    `MCP_DEFAULT_TIMEOUT` so the caller is still listening when they answer.
+    Here the store's own abort window (60-90s) is the binding constraint: a
+    budget under 30s would kill legitimate SPARQL queries that succeed today.
+
+    Asserting the deviation rather than the conformance keeps it a decision on
+    the record instead of something that reads like an oversight — and makes a
+    later silent tightening fail loudly.
+    """
+    from mcp.shared._httpx_utils import MCP_DEFAULT_TIMEOUT
+
+    assert c.TOTAL_BUDGET_S > MCP_DEFAULT_TIMEOUT
+    assert c.TOTAL_BUDGET_S == c.TIMEOUT_S  # budget matches the per-request ceiling
+    assert c.TOTAL_BUDGET_S < 60.0  # stays inside the store's own abort window

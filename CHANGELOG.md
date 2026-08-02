@@ -28,11 +28,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   wachsende Leiter und gegen ein `Retry-After`, das der Store senden darf, das
   man aber nicht absitzen muss.
 
-  Offen aus ARCH-014 bleibt ein **Gesamtbudget** ueber den ganzen Aufruf, das
-  unter dem Timeout des aufrufenden MCP-Clients liegt. `TIMEOUT_S` steht bei
-  45 s und damit ueber `MCP_DEFAULT_TIMEOUT` (30 s) des Python-SDK; das
-  nachzuziehen ist eine eigene Entscheidung, weil der Store selbst erst bei
-  60-90 s abbricht.
+- **Gesamtbudget von 45 s ueber den ganzen Aufruf** (ARCH-014). Eine Anzahl
+  Versuche ist keine Grenze: Vier Versuche a 45 s plus Backoff sind ueber drei
+  Minuten, und `MAX_ATTEMPTS = 4` sagt das nirgends. Geprueft wird vor jedem
+  Versuch: Eine Wartezeit, die das Budget ueberdauern wuerde, wird nicht mehr
+  angetreten, und das Timeout einer einzelnen Query ist auf die verbleibende
+  Zeit geklemmt. Ein explizites `timeout_s` bleibt gueltig, wenn es enger ist —
+  es gewinnt der kleinere der beiden Werte.
+
+  **Der Wert liegt bewusst ueber dem MCP-Client-Default.** Das Python-SDK setzt
+  `MCP_DEFAULT_TIMEOUT = 30.0`, und die Schwester-Server im Portfolio
+  (`swiss-efv-mcp`, `termdat-mcp`) bleiben mit 25 s darunter. LINDAS ist die
+  Ausnahme mit Absicht: Es liefert SPARQL, keinen festen Dump. Der Store bricht
+  teure Queries selbst erst bei 60-90 s ab, und `TIMEOUT_S = 45.0` existiert
+  genau, um davor zu schneiden. Ein Budget unter 30 s wuerde legitime Queries
+  abwuergen, die heute durchkommen — eine echte Faehigkeit gegen die Konformitaet
+  mit einem Default eingetauscht.
+
+  Die Folge ist angenommen, nicht uebersehen: Ein Aufrufer mit SDK-Default kann
+  aufgeben, bevor eine langsame Query zurueckkommt. Die bindende Grenze ist hier
+  das Abbruchfenster des Stores, und 45 s bleiben darin. Ein Test haelt diese
+  Abweichung fest — er prueft, dass das Budget **ueber** dem SDK-Default liegt,
+  damit sie eine dokumentierte Entscheidung bleibt und eine spaetere stille
+  Verengung laut scheitert.
+
+  Log und Meldung nennen neu, **welche** Grenze gegriffen hat: «all 4 attempts
+  used» und «45s budget spent» verlangen verschiedene Antworten.
 
 ## [0.2.1] - 2026-08-02
 
