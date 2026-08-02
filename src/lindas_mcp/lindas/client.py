@@ -172,12 +172,25 @@ async def run_query(
         except httpx.RequestError as exc:
             last_error = exc
 
-    raise UpstreamError(
-        f"LINDAS unreachable after {MAX_ATTEMPTS} attempts. "
-        f"Last error: {last_error}. This often means the query was too broad "
-        f"and the store timed out — anchor it on a known class such as "
-        f"`?x a cube:Cube`. Last success: {last_success() or 'none this session'}."
+    # OBS-007: httpx timeout/connect errors carry an empty str(), so the type
+    # has to be named explicitly — otherwise this message read "Last error: ."
+    detail = str(last_error) or "no further detail"
+    # The anchor hint fits exactly one failure: the store accepted the query and
+    # took too long to answer. A ConnectError never reached it, so blaming the
+    # query there would be a guess dressed as a diagnosis — and it was, until
+    # this line became conditional.
+    hint = (
+        " The store timed out while answering, which often means the query was "
+        "too broad — anchor it on a known class such as `?x a cube:Cube`."
+        if isinstance(last_error, httpx.ReadTimeout)
+        else ""
     )
+    raise UpstreamError(
+        f"LINDAS unreachable after {MAX_ATTEMPTS} attempts "
+        f"(host={urlsplit(ENDPOINT).hostname}): "
+        f"{type(last_error).__name__}: {detail}.{hint} "
+        f"Last success: {last_success() or 'none this session'}."
+    ) from last_error
 
 
 def _parse_bindings(payload: dict[str, Any]) -> list[dict[str, Any]]:

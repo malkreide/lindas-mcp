@@ -63,13 +63,37 @@ async def test_retries_on_503_then_succeeds():
 
 
 @respx.mock
-async def test_timeout_raises_upstream_with_anchor_hint():
-    respx.get(EP).mock(side_effect=httpx.ConnectTimeout("timed out"))
+async def test_read_timeout_raises_upstream_with_anchor_hint():
+    # A read timeout means the store accepted the query and took too long —
+    # the one case where "your query was too broad" is a diagnosis and not a
+    # guess. Only here may the hint appear.
+    respx.get(EP).mock(side_effect=httpx.ReadTimeout("timed out"))
     async with c.build_client() as http:
         with pytest.raises(c.UpstreamError) as exc:
             await c.run_query(http, "SELECT ?s WHERE {}")
-    # The error must teach the caller how to avoid the timeout next time.
     assert "anchor" in str(exc.value).lower()
+
+
+@respx.mock
+async def test_connect_error_names_the_type_and_withholds_the_hint():
+    """OBS-007: an empty ``str(exc)`` must not leave the message saying nothing.
+
+    This asserted the opposite until 2026-08-02: a ``ConnectTimeout`` — which
+    never reached the store — was expected to carry the "query was too broad"
+    hint. httpx timeout and connect errors also carry an *empty* ``str()``, so
+    the message read "Last error: ." followed by a confident misdiagnosis.
+    An empty message says nothing; an empty message with a guess attached says
+    something false.
+    """
+    respx.get(EP).mock(side_effect=httpx.ConnectError(""))  # leere Message: der reale Fall
+    async with c.build_client() as http:
+        with pytest.raises(c.UpstreamError) as exc:
+            await c.run_query(http, "SELECT ?s WHERE {}")
+    msg = str(exc.value)
+    assert "ConnectError" in msg          # Typ überlebt die leere Message
+    assert "lindas.admin.ch" in msg       # Ziel benannt
+    assert "anchor" not in msg.lower()    # keine Ursachenbehauptung ohne Grundlage
+    assert isinstance(exc.value.__cause__, httpx.ConnectError)
 
 
 @respx.mock
