@@ -6,15 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
+## [0.2.0] — 2026-08-02
 
-- **Capped `mcp` at `<2`.** `mcp` 2.0.0, published 2026-07-28, removed
-  `mcp.server.fastmcp` — the module this server imports. With the previous
-  unbounded `>=1.28.1` every fresh resolve picked 2.0.0 and failed at import
-  with `ModuleNotFoundError`, in CI and for anyone running `pip install` alike.
-  Verified in both directions: 2.0.0 fails, `<2` resolves to 1.29.0 and imports
-  cleanly. Migrating to the 2.x API (`mcp.server.mcpserver`) stays a separate,
-  deliberate piece of work.
+This release exists so that a repair reaches the people running the server:
+**the published `0.1.0` cannot be installed any more.** It declares `mcp` with
+no upper bound, and `mcp` 2.0.0 removed `mcp.server.fastmcp` — so a fresh
+`pip install lindas-mcp` resolves to 2.0.0 and the console script dies on
+startup with `ModuleNotFoundError`. Measured against the real artefact in an
+empty venv, cold and warm interpreter alike.
+
+The repository has carried the fix since the 2.x migration was merged; it was
+simply never released, and `main` kept the same version number as the broken
+artefact — so nothing contradicted it.
+
+### Changed (breaking)
+
+- **Migrated to the `mcp` Python SDK 2.x.** The server API moved from
+  `mcp.server.fastmcp` to `mcp.server.mcpserver` with no compatibility shim,
+  and the dependency is now `mcp>=2.0.0,<3`. The tool surface is unchanged —
+  what breaks is embedding this server's Python API and the dependency floor.
+  Anyone who must stay on `mcp` 1.x should stay on 0.1.0, and pin an upper
+  bound themselves, because the published 0.1.0 has none.
 
 ### Added
 - Portfolio-standard repository structure: `CONTRIBUTING.md`/`.de`,
