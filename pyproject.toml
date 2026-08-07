@@ -29,7 +29,7 @@ classifiers = [
 dependencies = ["mcp>=2.0.0,<3", "httpx>=0.27", "pydantic>=2.7", "structlog>=24.1,<27"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "respx>=0.21", "ruff>=0.6"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "respx>=0.21", "ruff==0.16.1"]
 
 [project.scripts]
 lindas-mcp = "lindas_mcp.server:main"
