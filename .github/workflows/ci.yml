@@ -31,3 +31,22 @@ jobs:
 
       - name: Lint
         run: ruff check src/ tests/
+
+      # Zweites, eigenstaendiges Gate. `ruff check` belegt kein Format: ein
+      # gruener Linter neben einem roten `ruff format --check` ist ein
+      # gewoehnlicher Zustand, kein Widerspruch — die beiden pruefen
+      # Verschiedenes. Der Regelsatz oben steht in `select`, hier ist das
+      # Ergebnis selbst das Kriterium.
+      #
+      # Eigener Schritt, damit im Log steht, welches der beiden Gates
+      # ausgeloest hat. In einen Schritt zusammengezogen waere die Antwort auf
+      # «warum ist die CI rot» eine Suche statt eine Zeile.
+      #
+      # Kein `--line-length`: die Breite entscheidet die `[tool.ruff]`-Sektion
+      # in pyproject.toml, nicht dieser Workflow.
+      #
+      # Gemessen vor dem Einbau: `ruff format --check src/ tests/` meldet
+      # «13 files already formatted». Das Gate ist also ab der ersten Minute
+      # gruen und formatiert nichts um — es haelt nur fest, was ohnehin gilt.
+      - name: Format
+        run: ruff format --check src/ tests/
