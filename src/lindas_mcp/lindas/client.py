@@ -23,6 +23,12 @@ from urllib.parse import urlsplit
 
 import httpx
 
+# Eigener Alias, damit Tests die Wartezeit nullen koennen, ohne `asyncio.sleep`
+# prozessweit zu entschaerfen. `monkeypatch.setattr(<modul>.asyncio, "sleep", ...)`
+# sieht lokal aus, ersetzt `sleep` aber auf dem geteilten Modulobjekt — fuer
+# httpx, respx, pytest-asyncio und jeden anderen Importeur im Prozess.
+_sleep = asyncio.sleep
+
 ENDPOINT = "https://lindas.admin.ch/query"
 
 # SEC-021: code-layer egress allow-list. A `frozenset` (not env-configurable) is
@@ -247,7 +253,7 @@ async def run_query(
             # has given up by the time it ends. Stop instead.
             if delay >= deadline - time.monotonic():
                 break
-            await asyncio.sleep(delay)
+            await _sleep(delay)
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             break

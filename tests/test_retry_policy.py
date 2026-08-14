@@ -8,6 +8,7 @@ wait must not run under a fixture whose whole job is to make waiting free.
 from __future__ import annotations
 
 import asyncio
+import inspect
 from datetime import datetime, timedelta, timezone
 from email.utils import format_datetime
 
@@ -113,7 +114,7 @@ async def test_retry_after_reaches_the_sleep(monkeypatch):
     async def _capture(seconds):
         slept.append(seconds)
 
-    monkeypatch.setattr(c.asyncio, "sleep", _capture)
+    monkeypatch.setattr(c, "_sleep", _capture)
     respx.get(EP).mock(
         side_effect=[
             _resp(429, "7"),
@@ -133,7 +134,7 @@ async def test_429_without_header_falls_back_to_the_curve(monkeypatch):
     async def _capture(seconds):
         slept.append(seconds)
 
-    monkeypatch.setattr(c.asyncio, "sleep", _capture)
+    monkeypatch.setattr(c, "_sleep", _capture)
     respx.get(EP).mock(
         side_effect=[
             _resp(429),
@@ -154,7 +155,7 @@ async def test_404_still_fails_fast_without_waiting(monkeypatch):
     async def _capture(seconds):
         slept.append(seconds)
 
-    monkeypatch.setattr(c.asyncio, "sleep", _capture)
+    monkeypatch.setattr(c, "_sleep", _capture)
     route = respx.get(EP).mock(return_value=httpx.Response(404))
     async with c.build_client() as http:
         with pytest.raises(c.UpstreamError):
@@ -180,7 +181,7 @@ def fake_clock(monkeypatch):
         now["t"] += seconds
 
     monkeypatch.setattr(c.time, "monotonic", lambda: now["t"])
-    monkeypatch.setattr(c.asyncio, "sleep", _sleep)
+    monkeypatch.setattr(c, "_sleep", _sleep)
     return now
 
 
@@ -277,3 +278,19 @@ async def test_a_slow_response_is_cut_by_the_wall_clock_deadline():
             await c.run_query(http, "SELECT ?s WHERE {}", total_budget=0.05)
     elapsed = real_time.monotonic() - started
     assert elapsed < 0.5, f"deadline did not cut: {elapsed:.2f}s"
+
+
+# --- Die Naht, und warum sie nicht `asyncio.sleep` ist -----------------------
+
+
+def test_der_retry_geht_ueber_den_alias():
+    """Sonst patchen die Tests eine Naht, die der Code gar nicht benutzt.
+
+    Umgeht das Modul den Alias, bleibt der Patch wirkungslos und die Suite
+    wartet die echte Backoff-Leiter ab. Kein Test faellt dabei — sie wird nur
+    um ein Vielfaches langsamer, und eine laengere Laufzeit ist kein Signal,
+    das jemand liest. Diese Zusicherung macht daraus einen Fehlschlag.
+    """
+    quelle = inspect.getsource(c)
+    assert "await _sleep(" in quelle, "der Retry ruft den Modul-Alias nicht mehr auf"
+    assert "await asyncio.sleep(" not in quelle, "der Retry umgeht den Alias"
