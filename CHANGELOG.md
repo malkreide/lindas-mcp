@@ -6,8 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Der Recorder startete auf Python 3.10 nicht.** `scripts/record_fixtures.py`
+  schrieb `from datetime import UTC` — ein Alias, das es erst ab 3.11 gibt,
+  während `requires-python` dieses Repos `>=3.10` sagt und die CI-Matrix 3.10
+  fährt. Der Testteil derselben Änderung hatte es getroffen und wurde von der
+  CI gemeldet; der Recorder nicht, weil ihn niemand importiert.
+
+  **Ruff kann diese Klasse nicht sehen:** bei `target-version = "py310"`
+  schlägt UP017 den Kurznamen gar nicht erst vor, verbietet ihn aber auch
+  nicht. Und die CI fährt nur pytest und ruff — ein Entwicklungsskript, das
+  niemand importiert, bricht dort nie. Der Fehler wäre erst dem aufgefallen,
+  der neu aufzeichnen will, und der stünde dann vor einem Werkzeug, das nicht
+  startet.
+
 ### Added
 
+- **`test_der_recorder_laesst_sich_importieren`** macht daraus einen roten
+  Test, auf jeder Version der Matrix. Der Test importiert das Skript und ruft
+  `main()` nicht auf — es geht um die Ladbarkeit, nicht um einen Lauf gegen die
+  Quelle.
 - **Eine aufgezeichnete Antwort je Abfrageform**, in `tests/fixtures/`, mit
   Herkunft, Aufnahmedatum, Auswahlregel und SHA-256 je Datei in
   `tests/fixtures/PROVENANCE.md`. Neu aufzeichnen mit

@@ -260,3 +260,30 @@ def test_alle_aufzeichnungen_beschreiben_denselben_wuerfel():
     assert all(wuerfel.rsplit("/", 1)[0] in b["obs"] for b in beobachtungen), (
         "die Beobachtungen gehoeren zu einem anderen Wuerfel als die Suche"
     )
+
+
+def test_der_recorder_laesst_sich_importieren():
+    """Faengt eine Klasse, die weder Ruff noch die uebrige Suite sieht.
+
+    `scripts/record_fixtures.py` wird von niemandem importiert: nicht vom
+    Paket, nicht von den Tests, nicht von der CI. Ein Fehler darin faellt
+    deshalb erst auf, wenn jemand neu aufzeichnen will — und dann steht er vor
+    einem Werkzeug, das nicht startet.
+
+    Genau das war der Fall: der Recorder schrieb `from datetime import UTC`,
+    ein Alias, das es erst ab Python 3.11 gibt, waehrend dieses Repo ab 3.10
+    unterstuetzt. Ruff meldet es nicht — bei `target-version = "py310"`
+    schlaegt UP017 den Kurznamen gar nicht erst vor, verbietet ihn aber auch
+    nicht. Der Import hier macht aus dem stillen Fall einen roten Test, und
+    zwar auf **jeder** Version der Matrix.
+    """
+    import importlib.util
+    from pathlib import Path
+
+    pfad = Path(__file__).resolve().parent.parent / "scripts" / "record_fixtures.py"
+    assert pfad.is_file(), f"Recorder nicht gefunden: {pfad}"
+    spec = importlib.util.spec_from_file_location("record_fixtures_probe", pfad)
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)  # nur Import — `main()` wird nicht gerufen
+    assert hasattr(modul, "main"), "der Recorder hat keinen Einstiegspunkt"
