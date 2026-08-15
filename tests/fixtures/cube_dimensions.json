@@ -1,0 +1,145 @@
+{
+  "head" : {
+    "vars" : [
+      "path",
+      "name",
+      "kind",
+      "has_codelist"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/wert"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Anteil"
+        },
+        "kind" : {
+          "type" : "uri",
+          "value" : "https://cube.link/MeasureDimension"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "false"
+        }
+      },
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/verkehrsart"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Verkehrsart"
+        },
+        "kind" : {
+          "type" : "uri",
+          "value" : "https://cube.link/KeyDimension"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "true"
+        }
+      },
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/beurteilung"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Beurteilung"
+        },
+        "kind" : {
+          "type" : "uri",
+          "value" : "https://cube.link/KeyDimension"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "true"
+        }
+      },
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/gemeindetype"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Raumkategorie"
+        },
+        "kind" : {
+          "type" : "uri",
+          "value" : "https://cube.link/KeyDimension"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "true"
+        }
+      },
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/laermbelasteteeinheit"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Läermbelastete Einheit"
+        },
+        "kind" : {
+          "type" : "uri",
+          "value" : "https://cube.link/KeyDimension"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "true"
+        }
+      },
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/periode"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Periode"
+        },
+        "kind" : {
+          "type" : "uri",
+          "value" : "https://cube.link/KeyDimension"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "true"
+        }
+      },
+      {
+        "path" : {
+          "type" : "uri",
+          "value" : "https://cube.link/observedBy"
+        },
+        "has_codelist" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#boolean",
+          "type" : "literal",
+          "value" : "true"
+        }
+      }
+    ]
+  }
+}

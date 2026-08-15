@@ -1,0 +1,161 @@
+{
+  "head" : {
+    "vars" : [
+      "cube",
+      "name",
+      "desc",
+      "creator",
+      "version",
+      "status"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "cube" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Lärmbelastung durch Verkehr"
+        },
+        "desc" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Anteil der Bevölkerung, Wohnungen und Gebäude, die tagsüber und nachts durch Straßen-, Schienen- und Fluglärmbelastung ausgesetzt sind. Die Daten basieren auf flächendeckenden Modellberechnungen (sonBASE)."
+        },
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-umwelt-bafu"
+        },
+        "version" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "6"
+        },
+        "status" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/vocabulary/CreativeWorkStatus/Published"
+        }
+      },
+      {
+        "cube" : {
+          "type" : "uri",
+          "value" : "https://communication.ld.admin.ch/ofcom/public_survey_electronic_media_iakom/6"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Publikumsbefragung elektronische Medien"
+        },
+        "desc" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Dieses Datenpaket enthält Informationen zur Medienausstattung, Mediennutzung sowie zur Bewertung der Qualität elektronischer Medien durch die Schweizer Bevölkerung (Radio, Fernsehen und Online-Angebote).  Die Analyse basiert auf einer repräsentativen Erhebung, die jährlich durchgeführt wird und Vergleiche über mehrere Jahre hinweg ermöglicht. Untersucht werden sowohl strukturelle Aspekte wie Medienausstattung und Zugriffsmöglichkeiten als auch Verhaltensweisen der Mediennutzung sowie die Prioritäten bei der Informationssuche und die Bewertung der genutzten Medienangebote entlang zentraler Qualitätsdimensionen (u. a. Professionalität, Informationsgehalt, Ausgewogenheit und Glaubwürdigkeit).  Die vorliegenden Daten stellen eine Auswahl zentraler Indikatoren der Untersuchung dar. Die Studie wurde bis 2022 im Auftrag des Bundesamts für Kommunikation durch das Institut für angewandte Kommunikationsforschung (IaKom) in Zusammenarbeit mit DemoSCOPE durchgeführt."
+        },
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-kommunikation-bakom"
+        },
+        "version" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "6"
+        },
+        "status" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/vocabulary/CreativeWorkStatus/Published"
+        }
+      },
+      {
+        "cube" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/5"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Lärmbelastung durch Verkehr"
+        },
+        "desc" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Anteil der Bevölkerung, Wohnungen und Gebäude, die tagsüber und nachts durch Straßen-, Schienen- und Fluglärmbelastung ausgesetzt sind. Die Daten basieren auf flächendeckenden Modellberechnungen (sonBASE)."
+        },
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-umwelt-bafu"
+        },
+        "version" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "5"
+        },
+        "status" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/vocabulary/CreativeWorkStatus/Published"
+        }
+      },
+      {
+        "cube" : {
+          "type" : "uri",
+          "value" : "https://communication.ld.admin.ch/ofcom/public_survey_electronic_media_iakom/5"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Publikumsbefragung elektronische Medien"
+        },
+        "desc" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Dieses Datenpaket enthält Informationen zur Medienausstattung, Mediennutzung sowie zur Bewertung der Qualität elektronischer Medien durch die Schweizer Bevölkerung (Radio, Fernsehen und Online-Angebote).  Die Analyse basiert auf einer repräsentativen Erhebung, die jährlich durchgeführt wird und Vergleiche über mehrere Jahre hinweg ermöglicht. Untersucht werden sowohl strukturelle Aspekte wie Medienausstattung und Zugriffsmöglichkeiten als auch Verhaltensweisen der Mediennutzung sowie die Prioritäten bei der Informationssuche und die Bewertung der genutzten Medienangebote entlang zentraler Qualitätsdimensionen (u. a. Professionalität, Informationsgehalt, Ausgewogenheit und Glaubwürdigkeit).  Die vorliegenden Daten stellen eine Auswahl zentraler Indikatoren der Untersuchung dar. Die Studie wurde bis 2022 im Auftrag des Bundesamts für Kommunikation durch das Institut für angewandte Kommunikationsforschung (IaKom) in Zusammenarbeit mit DemoSCOPE durchgeführt."
+        },
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-kommunikation-bakom"
+        },
+        "version" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "5"
+        },
+        "status" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/vocabulary/CreativeWorkStatus/Published"
+        }
+      },
+      {
+        "cube" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd0037/4"
+        },
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Lärmbelastung durch Verkehr"
+        },
+        "desc" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Anteil der Bevölkerung, Wohnungen und Gebäude, die tagsüber und nachts durch Straßen-, Schienen- und Fluglärmbelastung ausgesetzt sind. Die Daten basieren auf flächendeckenden Modellberechnungen (sonBASE)."
+        },
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-umwelt-bafu"
+        },
+        "version" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "4"
+        },
+        "status" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/vocabulary/CreativeWorkStatus/Published"
+        }
+      }
+    ]
+  }
+}
