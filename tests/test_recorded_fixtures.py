@@ -65,7 +65,11 @@ def test_provenance_nennt_ein_brauchbares_aufnahmedatum():
     match = re.search(r"Aufgezeichnet am \*\*(\d{4}-\d{2}-\d{2})\*\*", provenance())
     assert match, "PROVENANCE.md nennt kein Aufnahmedatum im erwarteten Format"
     when = dt.date.fromisoformat(match.group(1))
-    assert when <= dt.datetime.now(dt.UTC).date(), "Aufnahmedatum liegt in der Zukunft"
+    # `dt.timezone.utc`, nicht `dt.UTC`: das Alias kam mit Python 3.11, und die
+    # Matrix dieses Repos faehrt auch 3.10. Lokal faellt das nicht auf, wenn das
+    # venv 3.11 ist — die CI ist hier die einzige Instanz, die beide Versionen
+    # sieht.
+    assert when <= dt.datetime.now(dt.timezone.utc).date(), "Aufnahmedatum liegt in der Zukunft"
 
 
 def test_jede_fixture_steht_in_der_provenance():
