@@ -1,0 +1,155 @@
+{
+  "head" : {
+    "vars" : [
+      "creator",
+      "cubes"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-kommunikation-bakom"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "504"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-lebensmittelsicherheit-und-veterinaerwesen-blv"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "408"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-umwelt-bafu"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "242"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-energie-bfe"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "85"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-landwirtschaft-blw"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "52"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/schweizerisches-bundesarchiv-bar"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "41"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-zivilluftfahrt-bazl"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "14"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/elcom"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "7"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-statistik-bfs"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "3"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-gesundheit-bag"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "3"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/efv_finanzstatistik"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "2"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-wirtschaftliche-landesversorgung-bwl"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "2"
+        }
+      },
+      {
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://cube-creator.zazuko.com/user/2cc1756e-99cb-4154-bb23-3e408f1563ba"
+        },
+        "cubes" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "1"
+        }
+      }
+    ]
+  }
+}

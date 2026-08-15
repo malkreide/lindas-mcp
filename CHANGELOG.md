@@ -6,6 +6,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Eine aufgezeichnete Antwort je Abfrageform**, in `tests/fixtures/`, mit
+  Herkunft, Aufnahmedatum, Auswahlregel und SHA-256 je Datei in
+  `tests/fixtures/PROVENANCE.md`. Neu aufzeichnen mit
+  `PYTHONPATH=src python scripts/record_fixtures.py`, geladen über
+  `tests/fixture_data.py`.
+
+  **Je Abfrageform, nicht je Endpunkt.** Dieser Server spricht mit *einem*
+  Endpunkt, aber in acht Abfrageformen, und die Form der Antwort hängt an der
+  Abfrage: `cube_dimensions` liefert `path`/`kind`/`has_codelist`,
+  `cube_observations` liefert `obs`/`p`/`o` — die beiden teilen keine einzige
+  Variable. Die Portfolio-Regel «eine Antwort je externem Endpunkt» wäre hier
+  mit einer Datei erfüllt und trüge nichts.
+
+  Aufgezeichnet ist die **rohe SPARQL-JSON-Antwort**, nicht das geparste
+  Ergebnis: `_parse_bindings` gehört zu dem, was geprüft werden soll. Eine
+  Fixture aus fertigen Zeilen überspränge genau den Parser, den sie belegt.
+
+  **Alle acht Aufzeichnungen beschreiben denselben Würfel**, und die beiden
+  Gemeinde-Abfragen dieselbe Gemeinde über Name und BFS-Nummer. Zwei erfundene
+  Fixtures hätten hier leicht zwei verschiedene Orte gezeigt, ohne dass es
+  jemandem auffiele; `test_die_beiden_gemeindeabfragen_beschreiben_denselben_ort`
+  hält es fest.
+- **`test_der_wahrheitswert_kommt_als_string`** hält eine Falle fest, die erst
+  die echte Antwort zeigt: SPARQL liefert `BOUND(?in)` als Literal `"true"` /
+  `"false"`, nicht als JSON-Boolean — und `"false"` ist wahr. `cube.py` wandelt
+  seit jeher richtig um; der **Recorder** tat es beim ersten Lauf nicht und
+  zeichnete eine leere Codeliste auf. Gefangen hat es
+  `test_jede_aufzeichnung_traegt_zeilen`: eine leere Fixture sieht aus wie eine
+  gültige und prüft nichts.
+
 ### Changed
 
 - **Der Backoff-Schlaf wird ueber einen Modul-Alias gepatcht, nicht ueber

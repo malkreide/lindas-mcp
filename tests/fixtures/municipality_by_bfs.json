@@ -1,0 +1,28 @@
+{
+  "head" : {
+    "vars" : [
+      "muni",
+      "name",
+      "ident"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "muni" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/municipality/230"
+        },
+        "name" : {
+          "type" : "literal",
+          "value" : "Winterthur"
+        },
+        "ident" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "230"
+        }
+      }
+    ]
+  }
+}

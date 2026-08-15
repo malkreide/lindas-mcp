@@ -1,0 +1,84 @@
+{
+  "head" : {
+    "vars" : [
+      "obs",
+      "p",
+      "o"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "obs" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/observation/AKern/FlugL/Pers/%3EIGWLSV/D"
+        },
+        "p" : {
+          "type" : "uri",
+          "value" : "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+        },
+        "o" : {
+          "type" : "uri",
+          "value" : "https://cube.link/Observation"
+        }
+      },
+      {
+        "obs" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/observation/AKern/FlugL/Pers/%3EIGWLSV/D"
+        },
+        "p" : {
+          "type" : "uri",
+          "value" : "https://cube.link/observedBy"
+        },
+        "o" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/"
+        }
+      },
+      {
+        "obs" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/observation/AKern/FlugL/Pers/%3EIGWLSV/D"
+        },
+        "p" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/wert"
+        },
+        "o" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#decimal",
+          "type" : "literal",
+          "value" : "0.0"
+        }
+      },
+      {
+        "obs" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/observation/AKern/FlugL/Pers/%3EIGWLSV/D"
+        },
+        "p" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/verkehrsart"
+        },
+        "o" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/verkehrsart/FlugL"
+        }
+      },
+      {
+        "obs" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/observation/AKern/FlugL/Pers/%3EIGWLSV/D"
+        },
+        "p" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/beurteilung"
+        },
+        "o" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/beurteilung/%3EIGWLSV"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "head" : {
+    "vars" : [
+      "name",
+      "desc",
+      "creator",
+      "version",
+      "status",
+      "license"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "name" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Lärmbelastung durch Verkehr"
+        },
+        "desc" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Anteil der Bevölkerung, Wohnungen und Gebäude, die tagsüber und nachts durch Straßen-, Schienen- und Fluglärmbelastung ausgesetzt sind. Die Daten basieren auf flächendeckenden Modellberechnungen (sonBASE)."
+        },
+        "creator" : {
+          "type" : "uri",
+          "value" : "https://register.ld.admin.ch/opendataswiss/org/bundesamt-fur-umwelt-bafu"
+        },
+        "version" : {
+          "datatype" : "http://www.w3.org/2001/XMLSchema#integer",
+          "type" : "literal",
+          "value" : "6"
+        },
+        "status" : {
+          "type" : "uri",
+          "value" : "https://ld.admin.ch/vocabulary/CreativeWorkStatus/Published"
+        },
+        "license" : {
+          "type" : "uri",
+          "value" : "https://www.fedlex.admin.ch/eli/cc/1987/338_338_338/de#art_45_a"
+        }
+      }
+    ]
+  }
+}

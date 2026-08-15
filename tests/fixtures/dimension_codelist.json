@@ -1,0 +1,73 @@
+{
+  "head" : {
+    "vars" : [
+      "value",
+      "ident",
+      "label"
+    ]
+  },
+  "results" : {
+    "bindings" : [
+      {
+        "value" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/verkehrsart/FlugL"
+        },
+        "ident" : {
+          "type" : "literal",
+          "value" : "FlugL"
+        },
+        "label" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Flugverkehr"
+        }
+      },
+      {
+        "value" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/verkehrsart/EisbL"
+        },
+        "ident" : {
+          "type" : "literal",
+          "value" : "EisbL"
+        },
+        "label" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Eisenbahnverkehr"
+        }
+      },
+      {
+        "value" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/verkehrsart/StrLN"
+        },
+        "ident" : {
+          "type" : "literal",
+          "value" : "StrLN"
+        },
+        "label" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Nationalstrassen"
+        }
+      },
+      {
+        "value" : {
+          "type" : "uri",
+          "value" : "https://environment.ld.admin.ch/foen/ubd003701/6/verkehrsart/StraL"
+        },
+        "ident" : {
+          "type" : "literal",
+          "value" : "StraL"
+        },
+        "label" : {
+          "xml:lang" : "de",
+          "type" : "literal",
+          "value" : "Gesamtes Strassennetz"
+        }
+      }
+    ]
+  }
+}
