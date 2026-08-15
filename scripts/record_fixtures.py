@@ -32,7 +32,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -75,7 +75,12 @@ async def hole_roh(http: httpx.AsyncClient, query: str) -> tuple[str, str]:
 
 async def main() -> int:
     FIXTURES.mkdir(parents=True, exist_ok=True)
-    recorded_at = datetime.now(UTC).strftime("%Y-%m-%d")
+    # `timezone.utc`, nicht `UTC`: das Alias kam mit Python 3.11, und
+    # `requires-python` dieses Repos sagt >=3.10. Ruff meldet das nicht — bei
+    # `target-version = "py310"` schlaegt UP017 den Kurznamen gar nicht erst
+    # vor, verbietet ihn aber auch nicht. Und die CI faehrt nur pytest und
+    # ruff; ein Entwicklungsskript, das niemand importiert, bricht dort nie.
+    recorded_at = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     entries: list[dict[str, Any]] = []
     print(f"Zeichne auf von {c.ENDPOINT}")
 
