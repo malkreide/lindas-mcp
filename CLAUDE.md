@@ -50,14 +50,25 @@ Ein Codex-Review auf einem PR wird beantwortet oder behoben, nie ignoriert.
 hat keinen eigenen Pin-Schritt — der Install über `ci.yml` genügt, lokal wie
 dort. Eine `.pre-commit-config.yaml` gibt es nicht; wenn eine dazukommt, muss
 sie dieselbe Version aus `pyproject.toml` beziehen und keine zweite nennen.
+`tests/test_werkzeug_versionen.py` fällt, wenn hier eine Spanne steht oder
+ein Workflow eine zweite Version setzt.
 
 **Gates, wörtlich aus `ci.yml`** (Matrix: Python 3.10 / 3.11 / 3.12 / 3.13):
 
 ```
 PYTHONPATH=src pytest tests/ -m "not live"
-ruff check src/ tests/
-ruff format --check src/ tests/
+ruff check src/ tests/ scripts/
+ruff format --check src/ tests/ scripts/
 ```
+
+**Beide ruff-Gates decken dieselben drei Verzeichnisse ab, und das ist der
+Punkt.** Sie liefen über `src/ tests/`, während unter `scripts/` zwei
+Python-Dateien liegen — `record_fixtures.py` und `classify_live_run.py`,
+letzteres entscheidet, ob ein roter Live-Lauf ein Issue aufmacht. Beide waren
+von keinem Gate erfasst. Nachgemessen mit einer absichtlich kaputten Sonde in
+`scripts/`: der alte Umfang meldete «All checks passed», der neue Exit 1.
+Kein `include` unter `[tool.ruff]` setzen — das hebt die Pfadangabe der Gates
+still wieder auf.
 
 **Live-Tests: geplanter Workflow vorhanden.** `.github/workflows/live.yml`,
 `cron: "17 5 * * 1"` plus `workflow_dispatch`. Die Live-Suite ist also nicht bloss
