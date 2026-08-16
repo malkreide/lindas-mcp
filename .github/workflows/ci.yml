@@ -60,3 +60,6 @@ jobs:
       # «19 files already formatted» ueber alle drei.
       - name: Format
         run: ruff format --check src/ tests/ scripts/
+
+      - name: Versions-Sync (pyproject ↔ server.json / README / src)
+        run: python scripts/check_version_sync.py
