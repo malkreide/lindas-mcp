@@ -29,8 +29,14 @@ jobs:
         run: |
           PYTHONPATH=src pytest tests/ -m "not live"
 
+      # Umfang schliesst `scripts/` ein. Vorher stand hier `src/ tests/`,
+      # waehrend unter `scripts/` zwei Python-Dateien liegen — darunter
+      # `classify_live_run.py`, das entscheidet, ob ein roter Live-Lauf ein
+      # Issue aufmacht. Sie waren von beiden Gates nicht erfasst und konnten
+      # ungehindert driften. Gemessen vor dem Einbau: beide Dateien sind heute
+      # sauber, das Gate ist ab der ersten Minute gruen.
       - name: Lint
-        run: ruff check src/ tests/
+        run: ruff check src/ tests/ scripts/
 
       # Zweites, eigenstaendiges Gate. `ruff check` belegt kein Format: ein
       # gruener Linter neben einem roten `ruff format --check` ist ein
@@ -45,8 +51,12 @@ jobs:
       # Kein `--line-length`: die Breite entscheidet die `[tool.ruff]`-Sektion
       # in pyproject.toml, nicht dieser Workflow.
       #
-      # Gemessen vor dem Einbau: `ruff format --check src/ tests/` meldet
-      # «13 files already formatted». Das Gate ist also ab der ersten Minute
-      # gruen und formatiert nichts um — es haelt nur fest, was ohnehin gilt.
+      # Gleicher Umfang wie `ruff check` eine Zeile hoeher — zwei Gates mit
+      # zwei Reichweiten sehen aus wie ein Gate.
+      #
+      # Gemessen vor jeder Erweiterung, damit das Gate ab der ersten Minute
+      # gruen ist und nichts umformatiert: beim Einbau «13 files already
+      # formatted» ueber `src/ tests/`, beim Hinzunehmen von `scripts/`
+      # «19 files already formatted» ueber alle drei.
       - name: Format
-        run: ruff format --check src/ tests/
+        run: ruff format --check src/ tests/ scripts/
