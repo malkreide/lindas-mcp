@@ -67,6 +67,9 @@ sie dieselbe Version aus `pyproject.toml` beziehen und keine zweite nennen.
 `tests/test_werkzeug_versionen.py` fällt, wenn hier eine Spanne steht oder
 ein Workflow eine zweite Version setzt.
 
+Vor dem Lauf `ruff --version` prüfen: ein älteres ruff früher im `PATH`
+schlägt den Pin, ohne dass der Install etwas meldet.
+
 **Gates, wörtlich aus `ci.yml`** (Matrix: Python 3.10 / 3.11 / 3.12 / 3.13):
 
 ```
