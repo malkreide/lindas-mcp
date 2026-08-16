@@ -84,6 +84,19 @@ von keinem Gate erfasst. Nachgemessen mit einer absichtlich kaputten Sonde in
 Kein `include` unter `[tool.ruff]` setzen — das hebt die Pfadangabe der Gates
 still wieder auf.
 
+**Drei ist die ganze Liste — es gibt kein Versions-Sync-Gate.** `scripts/`
+enthält nur die zwei oben genannten Dateien, ein `check_version_sync.py`
+fehlt, und kein Workflow ruft eines auf. `pyproject.toml` und `server.json`
+stehen beide auf `0.2.1`, gehalten wird das von nichts. Die meisten
+Schwester-Server fahren den Gate; beim Anheben hier also beide Stellen von
+Hand, und die README-Badges dazu.
+
+**Die Matrix ist die breiteste im Portfolio: 3.10 bis 3.13**, vier Felder
+statt der üblichen drei. Alle drei Gates laufen auf allen vieren, keine
+`if:`-Ausnahme. Ein `fail-fast: false` steht nicht da — eine rote 3.10 bricht
+die übrigen drei ab, bevor sie etwas sagen, und 3.10 ist hier das Feld, das
+am ehesten allein fällt.
+
 **Live-Tests: geplanter Workflow vorhanden.** `.github/workflows/live.yml`,
 `cron: "17 5 * * 1"` plus `workflow_dispatch`. Die Live-Suite ist also nicht bloss
 per `-m "not live"` ausgeschlossen — DRIFT-005 ist hier erfüllt. `schedule`
