@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Die Pruefsummen im Fixture-Nachweis waren Zierde.** `PROVENANCE.md` fuehrt
+  je Datei einen SHA-256 — um genau einen Fall zu fangen: eine Aufzeichnung,
+  die nach dem Lauf von Hand nachgebessert wurde. Eine korrigierte Antwort ist
+  wieder eine erfundene, und von aussen ist ihr das nicht anzusehen.
+  Nachgerechnet hat sie kein Test. `test_die_pruefsumme_im_nachweis_stimmt`
+  tut es jetzt, ueber die Bytes auf der Platte statt ueber den Loader — genau
+  die hat der Recorder gehasht.
+
 - **Der Recorder startete auf Python 3.10 nicht.** `scripts/record_fixtures.py`
   schrieb `from datetime import UTC` — ein Alias, das es erst ab 3.11 gibt,
   während `requires-python` dieses Repos `>=3.10` sagt und die CI-Matrix 3.10
