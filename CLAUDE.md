@@ -74,6 +74,7 @@ schlägt den Pin, ohne dass der Install etwas meldet.
 
 ```
 PYTHONPATH=src pytest tests/ -m "not live"
+python scripts/check_ruff_pin.py
 ruff check src/ tests/ scripts/
 ruff format --check src/ tests/ scripts/
 ```
