@@ -23,6 +23,20 @@ _REAL_SLEEP = asyncio.sleep
 
 EP = c.ENDPOINT
 
+# Wall-clock numbers for the deadline test below, spread far enough apart that
+# scheduler jitter cannot move the outcome. Measured on 3.11 over 15 runs of
+# that test's own body, through pytest so every fixture is in place:
+# 0.121-0.172s against a 0.05s budget. Building and closing the client accounts
+# for about 0.075s of that — more than the budget itself — so most of what the
+# test used to measure was setup, not deadline. The old bound of 0.5s left
+# 0.375s of absolute headroom, and CI jitter is absolute, not proportional: in
+# swiss-efv-mcp a loaded runner turned 0.105s into 0.55s on 2026-08-21 and tore
+# the same assertion there. Raising the budget does not shrink that stall, it
+# makes the stall small *relative to* what is measured.
+_BUDGET = 0.5
+_CUT_BY = 2.5
+_SLOW_RESPONSE = 8.0
+
 
 def _resp(status: int, retry_after: str | None = None) -> httpx.Response:
     headers = {"Retry-After": retry_after} if retry_after is not None else {}
@@ -264,20 +278,42 @@ async def test_a_slow_response_is_cut_by_the_wall_clock_deadline():
     ``asyncio.sleep``: a guarantee about real time cannot be refuted by a clock
     or a sleep that has been patched out. That blind spot is why the original
     counter-checks missed this.
+
+    The margins are wide on purpose — see `_BUDGET` above for the measurement
+    that set them. Building the client and the first call through it happen
+    before the clock starts, so the measured window holds the deadline and
+    nothing else.
     """
     import time as real_time
 
-    async def _slow(request):
-        await _REAL_SLEEP(1.0)
-        return httpx.Response(200, json={"head": {"vars": []}, "results": {"bindings": []}})
+    _EMPTY = {"head": {"vars": []}, "results": {"bindings": []}}
 
-    respx.get(EP).mock(side_effect=_slow)
-    started = real_time.monotonic()
+    # Warm-up on the untouched default budget: pays whatever a fresh client and
+    # the first call through it cost, outside the window measured below.
+    route = respx.get(EP).mock(return_value=httpx.Response(200, json=_EMPTY))
+    async with c.build_client() as warm:
+        await c.run_query(warm, "SELECT ?s WHERE {}")
+
+    async def _slow(request):
+        await _REAL_SLEEP(_SLOW_RESPONSE)
+        return httpx.Response(200, json=_EMPTY)
+
+    route.mock(side_effect=_slow)
     async with c.build_client() as http:
+        # The clock starts *inside* the context manager: constructing and
+        # closing the client cost more than the old 0.05s budget did, and that
+        # is setup, not deadline.
+        started = real_time.monotonic()
         with pytest.raises(c.UpstreamError):
-            await c.run_query(http, "SELECT ?s WHERE {}", total_budget=0.05)
-    elapsed = real_time.monotonic() - started
-    assert elapsed < 0.5, f"deadline did not cut: {elapsed:.2f}s"
+            await c.run_query(http, "SELECT ?s WHERE {}", total_budget=_BUDGET)
+        elapsed = real_time.monotonic() - started
+
+    # Two-sided on purpose. The upper bound is the guarantee: a response that
+    # would have taken _SLOW_RESPONSE was cut. The lower bound says the cut came
+    # from the budget rather than from something failing straight away — a
+    # deadline computed wrong sails through an upper bound alone.
+    assert elapsed >= _BUDGET / 2, f"cut too early to be the budget: {elapsed:.3f}s"
+    assert elapsed < _CUT_BY, f"deadline did not cut: {elapsed:.2f}s"
 
 
 # --- Die Naht, und warum sie nicht `asyncio.sleep` ist -----------------------
