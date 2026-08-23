@@ -533,12 +533,47 @@ def build_transport_security(host: str, port: int):
     )
 
 
-def build_http_app(transport: str) -> Any:
+# The headers spec 2026-07-28 routes a request by, in the SDK's own spelling
+# (`mcp.shared.inbound`): the JSON-RPC method, the tool/prompt/resource the
+# call names, and the protocol revision it is written against.
+CORS_ROUTING_HEADERS = ["Mcp-Method", "Mcp-Name", "Mcp-Protocol-Version"]
+
+# This was `["*", "Mcp-Session-Id"]`, and the wildcard won: Starlette switches
+# to `allow_all_headers` and mirrors back whatever a browser announces, so
+# every permitted origin could send any header at all. That is not an
+# allow-list, it is the absence of one — and it hides every drift besides,
+# because a wildcard cannot become wrong. Drop a header the protocol needs and
+# nothing turns red.
+#
+# `Last-Event-ID` is how a client resumes a dropped SSE stream
+# (`LAST_EVENT_ID_HEADER` in `mcp.server.streamable_http`). Omitting it breaks
+# only reconnection after packet loss — the worst way to find a bug.
+#
+# `Mcp-Param-*` is deliberately absent: CORS has no prefix wildcard, and no
+# tool here annotates an input field with `x-mcp-header`, so no such header is
+# ever sent. `test_no_tool_declares_an_mcp_param_header` fails the day one does.
+CORS_ALLOW_HEADERS = [
+    "Content-Type",
+    *CORS_ROUTING_HEADERS,
+    "Mcp-Session-Id",
+    "Last-Event-ID",
+]
+
+
+def build_http_app(
+    transport: str,
+    security: Any = None,
+    host: str = "127.0.0.1",
+) -> Any:
     """Build the SSE / streamable-http ASGI app with CORS configured.
 
     MCPServer.run() serves the ASGI app without CORS, so browser clients cannot
     read the `Mcp-Session-Id` response header and lose their session (SDK-004).
     We build the app ourselves and expose that header via CORS.
+
+    `security` and `host` are per-app keyword arguments in mcp 2.x. They used to
+    be assigned to `mcp.settings` by the caller, which no longer works at all —
+    see `_run_http`.
     """
     from starlette.middleware.cors import CORSMiddleware
 
@@ -548,12 +583,16 @@ def build_http_app(transport: str) -> Any:
     raw = os.getenv("ALLOWED_ORIGINS", "*").strip()
     origins = ["*"] if raw == "*" else [o.strip() for o in raw.split(",") if o.strip()]
 
-    app = mcp.sse_app() if transport == "sse" else mcp.streamable_http_app()
+    app = (
+        mcp.sse_app(transport_security=security, host=host)
+        if transport == "sse"
+        else mcp.streamable_http_app(transport_security=security, host=host)
+    )
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["*", "Mcp-Session-Id"],
+        allow_headers=CORS_ALLOW_HEADERS,
         # Browsers only read a response header if it is listed here, and MCP
         # clients need Mcp-Session-Id to keep a session.
         expose_headers=["Mcp-Session-Id"],
@@ -573,8 +612,11 @@ def _run_http(transport: str, host: str, port: int) -> None:
             hint="Set LINDAS_MCP_ALLOWED_HOSTS to the hostnames this server is "
             "reachable under; without it the Host header is not checked at all.",
         )
-    mcp.settings.transport_security = security
-    uvicorn.run(build_http_app(transport), host=host, port=port, log_level="info")
+    # `mcp.settings.transport_security = security` stood here. In mcp 2.x that
+    # field does not exist and pydantic raises `ValueError: "Settings" object
+    # has no field "transport_security"` — so every HTTP transport died on this
+    # line before uvicorn was ever reached. It is a per-app kwarg now.
+    uvicorn.run(build_http_app(transport, security, host), host=host, port=port, log_level="info")
 
 
 def main() -> None:
