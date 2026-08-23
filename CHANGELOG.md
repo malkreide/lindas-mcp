@@ -6,6 +6,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Jeder HTTP-Transport starb beim Start.** `_run_http` setzte
+  `mcp.settings.transport_security = security` — die Form vor 2.x. In `mcp` 2.x
+  gibt es das Feld nicht, pydantic wirft `ValueError: "Settings" object has no
+  field "transport_security"`, und zwar bevor uvicorn erreicht wurde. Die
+  Transport-Sicherheit ist jetzt ein Schlüsselwort-Argument von
+  `build_http_app`. Ohne sie kam ein fremder `Host` durch die Prüfung (400
+  statt 421); der Test hält diesen Unterschied fest, statt bloss zu belegen,
+  dass die Funktion das Argument entgegennimmt.
+
+- **`allow_headers` stand auf `["*", "Mcp-Session-Id"]`,** und die Wildcard
+  gewann: Starlette schaltet damit auf `allow_all_headers` und spiegelt im
+  Preflight zurück, was der Browser ankündigt. Die Liste nennt jetzt
+  `Content-Type`, die drei Routing-Header der Spec `2026-07-28`,
+  `Mcp-Session-Id` und `Last-Event-ID`. Letzterer setzt einen abgerissenen
+  SSE-Strom fort und war unter der Wildcard nie geprüft.
+
+  Der Standard von `ALLOWED_ORIGINS` bleibt `*`. Das ist eine eigene
+  Entscheidung mit eigenen Folgen für bestehende Clients.
+
 ### Added
 
 - **Frischehinweise auf `tools/list` und `server/discover`** (SEP-2549, Spec
