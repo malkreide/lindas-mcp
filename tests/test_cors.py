@@ -23,6 +23,7 @@ from lindas_mcp.server import (
     CORS_ROUTING_HEADERS,
     build_http_app,
     build_transport_security,
+    configured_origins,
 )
 
 ORIGIN = "https://client.example"
@@ -38,7 +39,10 @@ def kind(request) -> str:
 
 
 @pytest.fixture
-def client(kind: str) -> TestClient:
+def client(kind: str, monkeypatch: pytest.MonkeyPatch) -> TestClient:
+    """`ALLOWED_ORIGINS` muss gesetzt sein: die Origins sind jetzt fail-closed,
+    ein unkonfigurierter Server laesst gar keinen Browser durch."""
+    monkeypatch.setenv("ALLOWED_ORIGINS", ORIGIN)
     return TestClient(build_http_app(kind))
 
 
@@ -73,16 +77,10 @@ def test_every_allow_listed_header_passes_the_preflight(
 
 
 def test_the_headers_together(client: TestClient, kind: str) -> None:
-    """What a browser actually sends: all of them, on the same request.
-
-    `ALLOWED_ORIGINS` is unset here, so `allow_origins` falls back to `["*"]`
-    and the response echoes `*` rather than the request's origin. That default
-    is a separate decision from the header list and is left as it stands —
-    changing it would lock out every browser client relying on it today.
-    """
+    """What a browser actually sends: all of them, on the same request."""
     resp = preflight(client, kind, ", ".join(h.lower() for h in CORS_ALLOW_HEADERS))
     assert resp.status_code == 200
-    assert resp.headers["access-control-allow-origin"] == "*"
+    assert resp.headers["access-control-allow-origin"] == ORIGIN
 
 
 def test_a_header_nobody_allow_listed_is_refused(client: TestClient, kind: str) -> None:
@@ -177,6 +175,71 @@ def test_the_http_app_carries_the_transport_security(monkeypatch: pytest.MonkeyP
     # The negative control: without the object the same request gets past the
     # Host check and dies later, on the empty JSON-RPC body.
     assert host_status(None) == 400
+
+
+def test_no_configured_origin_means_no_browser_access(
+    kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Fail-closed. the default was `*`, so every website on the
+    internet could call this server from a visitor's browser unless an operator
+    knew to narrow it. "Frictionless in dev" and "open to the internet in
+    production" were the same setting.
+
+    Unset now means no cross-origin access at all. stdio and non-browser
+    clients are unaffected — CORS governs browsers only.
+    """
+    monkeypatch.delenv("ALLOWED_ORIGINS", raising=False)
+    client = TestClient(build_http_app(kind))
+    resp = preflight(client, kind, "content-type")
+    assert "access-control-allow-origin" not in resp.headers
+
+
+def test_an_origin_outside_the_list_is_refused(kind: str, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The counter-control. Without it every origin test here would pass just
+    as well against the old wildcard."""
+    monkeypatch.setenv("ALLOWED_ORIGINS", ORIGIN)
+    client = TestClient(build_http_app(kind))
+    resp = client.options(
+        ENDPOINTS[kind],
+        headers={
+            "Origin": "https://elsewhere.example",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert "access-control-allow-origin" not in resp.headers
+
+
+def test_the_wildcard_is_still_reachable_but_must_be_asked_for(
+    kind: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tightening a default is not the same as removing the option. An operator
+    who wants any-origin access can still have it — deliberately, and the
+    server logs a warning when they do."""
+    monkeypatch.setenv("ALLOWED_ORIGINS", "*")
+    client = TestClient(build_http_app(kind))
+    resp = preflight(client, kind, "content-type")
+    assert resp.headers["access-control-allow-origin"] == "*"
+
+
+def test_configured_origins_parses_a_list(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALLOWED_ORIGINS", " https://a.test , https://b.test ")
+    assert configured_origins() == ["https://a.test", "https://b.test"]
+
+
+def test_the_transport_check_lets_the_configured_origins_through(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Konfigurierte Origins muessen auch die Transport-Pruefung passieren,
+    sonst weist der Server genau die Browser-Clients ab, die CORS erlaubt.
+    Beide Stellen lesen jetzt dieselbe Funktion statt zweier Parser.
+    """
+    monkeypatch.setenv("ALLOWED_ORIGINS", "https://a.test,*")
+    security = build_transport_security("127.0.0.1", 8000)
+    assert security is not None
+    assert "https://a.test" in security.allowed_origins
+    # `*` is not expressible there (origins are matched literally).
+    assert "*" not in security.allowed_origins
 
 
 def test_assigning_transport_security_to_settings_still_raises() -> None:

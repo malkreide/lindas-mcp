@@ -6,6 +6,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- **BRECHEND: Browser-Origins sind jetzt fail-closed.** `allow_origins` stand
+  standardmässig auf `*` —
+  jede Website im Internet konnte diesen Server aus dem Browser eines
+  Besuchers aufrufen. Gemessen vorher:
+  `Origin: https://boesartig.example` bekam `200` mit
+  `Access-Control-Allow-Origin: *`.
+
+  Die Origins kommen jetzt aus `ALLOWED_ORIGINS` (kommagetrennt) und
+  sind **standardmässig leer** — kein Browser-Client wird zugelassen. Wer
+  Browser-Clients will, nennt die Origins; niemand erbt eine Freizügigkeit, die
+  er nicht gewählt hat.
+
+  `*` ist weiterhin erreichbar, aber nicht mehr stillschweigend: es muss
+  ausdrücklich gesetzt werden und schreibt eine Warnung ins Log. Eine
+  Verengung des Standards ist nicht dasselbe wie das Entfernen der Option.
+
+  **Wer den bisherigen Zustand behalten will, setzt `ALLOWED_ORIGINS=*`.**
+  stdio- und andere Nicht-Browser-Clients sind unberührt — CORS betrifft nur
+  Browser.
+
 ### Fixed
 
 - **Jeder HTTP-Transport starb beim Start.** `_run_http` setzte

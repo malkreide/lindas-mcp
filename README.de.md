@@ -172,7 +172,9 @@ LINDAS_MCP_TRANSPORT=sse PORT=8000 lindas-mcp
 Der SSE-/streamable-http-Transport bindet an `HOST`, **Default `127.0.0.1`**;
 mit `HOST=0.0.0.0` explizit exponieren (nur hinter einem Reverse-Proxy). Für ein
 gehostetes HTTP-Deployment `ALLOWED_ORIGINS` auf eine kommagetrennte Liste von
-Browser-Origins setzen (Default `*`) und `LOG_LEVEL` für die JSON-stderr-Logs.
+Browser-Origins setzen — **nicht gesetzt heisst: kein Browser-Client wird
+zugelassen**, und das ist der Standard. `*` geht weiterhin und schreibt eine
+Warnung ins Log. `LOG_LEVEL` steuert die JSON-stderr-Logs.
 
 ### Docker
 

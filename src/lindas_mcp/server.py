@@ -493,6 +493,21 @@ async def tool_manifest() -> dict[str, Any]:
 # --------------------------------------------------------------------------
 
 
+def configured_origins() -> list[str]:
+    """Parse `ALLOWED_ORIGINS`. Empty by default — no cross-origin access.
+
+    The default used to be `*`, so every website on the internet could call
+    this server from a visitor's browser unless an operator knew to narrow it.
+    The wildcard is still reachable — it just has to be asked for now, and it
+    says so in the log.
+
+    Fail-closed is the portfolio default: nobody inherits a permissive setting
+    they did not choose. The variable keeps its name; renaming it would be a
+    second breaking change for the same deployment.
+    """
+    return [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
+
 def build_transport_security(host: str, port: int):
     """Host/Origin allow-list for the HTTP/SSE transports (SEC-005, inbound).
 
@@ -522,9 +537,7 @@ def build_transport_security(host: str, port: int):
     # rejects exactly the browser clients CORS permits. "*" cannot be expressed
     # here (origins are matched literally, only a trailing ":*" port wildcard
     # exists), so it is not copied across.
-    raw_origins = os.getenv("ALLOWED_ORIGINS", "")
-    configured = [o.strip() for o in raw_origins.split(",") if o.strip()]
-    origins = {o for o in configured if o != "*"}
+    origins = {o for o in configured_origins() if o != "*"}
     origins |= {f"http://{h}" for h in hosts}
     return TransportSecuritySettings(
         enable_dns_rebinding_protection=True,
@@ -577,11 +590,25 @@ def build_http_app(
     """
     from starlette.middleware.cors import CORSMiddleware
 
-    # SDK-004: origins are configurable via ALLOWED_ORIGINS (comma-separated).
-    # Default `*` keeps local/dev usage frictionless; set an explicit list in
-    # production so only known browser origins can reach a hosted server.
-    raw = os.getenv("ALLOWED_ORIGINS", "*").strip()
-    origins = ["*"] if raw == "*" else [o.strip() for o in raw.split(",") if o.strip()]
+    # SDK-004: origins come from ALLOWED_ORIGINS (comma-separated) and default
+    # to *empty* — no browser origin at all. The old default was `*`, which made
+    # every hosted deployment reachable from any website unless someone knew to
+    # narrow it. "Frictionless in dev" and "open to the internet in production"
+    # were the same setting.
+    origins = configured_origins()
+    if "*" in origins:
+        logger.warning(
+            "cors_wildcard_origin",
+            hint="ALLOWED_ORIGINS contains '*'; any site can call this server "
+            "from a visitor's browser. Name explicit origins in production.",
+        )
+    elif not origins:
+        logger.info(
+            "cors_no_origins",
+            hint="ALLOWED_ORIGINS is unset, so browser-based MCP clients are "
+            "not permitted. Set it to a comma-separated origin list to enable "
+            "them. stdio and non-browser clients are unaffected.",
+        )
 
     app = (
         mcp.sse_app(transport_security=security, host=host)
