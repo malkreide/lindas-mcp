@@ -247,10 +247,32 @@ Note that the SDK's `LATEST_PROTOCOL_VERSION` is an alias for the **modern**
 era, not for the handshake era — pinning against it alone would leave the era
 that current clients actually negotiate free to drift.
 
+### What `2026-07-28` changes here
+
+The modern era has no `initialize` handshake, and therefore no handshake result
+in which a client learns who it is talking to. Three consequences are served
+explicitly rather than left at the SDK's defaults:
+
+| Surface | Behaviour |
+|---|---|
+| `serverInfo` | Stamped into `_meta` on every response and into `server/discover`. Name, title, version, description and website URL are resolved from the installed distribution's metadata, never written by hand. `MCPServer` defaults `version` to `""` and substitutes nothing, so an unset version is a required field that says nothing. |
+| `instructions` | Returned by `server/discover` — the only orientation channel a modern client has. It states the two-phase access order, without which observations come back as codes nobody can resolve. |
+| Log delivery | `logging/setLevel` is gone (SEP-2577); a client opts in per request via the reserved `_meta` key `io.modelcontextprotocol/logLevel`. Without it the server sends nothing; with `debug` it sends one `notifications/message` per tool call on that request's stream. |
+| `tools/list`, `server/discover` | Carry `ttlMs` 300000 and `cacheScope` `public` (SEP-2549). |
+
+All of it is measured through the assembled stack in
+[`tests/test_spec_2026_07_28.py`](tests/test_spec_2026_07_28.py) — both eras,
+both transports, and both branches of the log opt-in. The tool contract itself
+is guarded independently by `tool-definitions.lock.json` (SEC-022), and the
+modern era is asserted to serve exactly the tools listed there, so the two eras
+cannot drift into two different servers behind one address.
+
 **Update policy.** When the gate fails, do not edit the constant blindly: read
 the spec changelog between the two revisions, verify the server still behaves,
 then move the constant, this section, `README.de.md` and
-[`CHANGELOG.md`](CHANGELOG.md) together.
+[`CHANGELOG.md`](CHANGELOG.md) together. SDK upgrades are a reviewed change for
+the same reason: any protocol-affecting bump is called out in
+[`CHANGELOG.md`](CHANGELOG.md).
 
 ---
 
@@ -318,14 +340,3 @@ to link this PyPI package to the GitHub namespace:
 ```
 mcp-name: io.github.malkreide/lindas-mcp
 ```
-
----
-
-## MCP protocol version
-
-The negotiated MCP protocol version is managed by the pinned `mcp` SDK
-(`mcp>=1.28.1` in `pyproject.toml`), which Dependabot keeps current. SDK upgrades
-are therefore a reviewed change: any protocol-affecting bump is called out in
-`CHANGELOG.md`, and the tool contract is guarded independently by
-`tool-definitions.lock.json` (SEC-022) so a change to the tool surface fails CI
-until reviewed.

@@ -27,6 +27,7 @@ from mcp.server.caching import CacheableMethod, CacheHint
 from mcp.server.mcpserver import Context, MCPServer
 from pydantic import Field
 
+from ._version import __homepage__, __summary__, __version__
 from .lindas import cube
 from .lindas.client import (
     ENDPOINT,
@@ -93,7 +94,56 @@ CACHE_HINTS: dict[CacheableMethod, CacheHint] = {
     "server/discover": CacheHint(ttl_ms=LIST_CACHE_TTL_MS, scope="public"),
 }
 
-mcp = MCPServer("lindas-mcp", lifespan=_lifespan, cache_hints=CACHE_HINTS)
+# Spec 2026-07-28: `server/discover` ist in der modernen Aera der einzige Ort,
+# an dem diese Orientierung ankommt — einen `initialize`-Handshake, dessen
+# Ergebnis sie sonst truege, gibt es dort nicht. Leer gelassen ruft ein
+# moderner Client `query_cube_observations` vor `get_cube_structure` und
+# bekommt Codes zurueck, die er nicht aufloesen kann. Die Reihenfolge ist
+# deshalb der erste Absatz und nicht eine Fussnote.
+SERVER_INSTRUCTIONS = """\
+LINDAS is the Swiss administration's SPARQL knowledge graph (~2000 statistical
+cubes from federal offices, plus the geo data behind visualize.admin.ch).
+
+Access is two-phase, and the order matters: `search_cubes` to find a cube URI,
+`get_cube_structure` to learn its dimensions and code lists, only then
+`query_cube_observations` for the data. Reading observations without the
+structure yields codes you cannot interpret.
+
+The store times out on broad queries. Keep `run_sparql` anchored to a known
+cube or subject; it is the escape hatch for analytical slicing, not a browser.
+
+BFS commune numbers (via `resolve_municipality`) are the join key to the rest
+of the Swiss public-data portfolio."""
+
+# Dieselbe Luecke eine Ebene hoeher: ohne Handshake-Ergebnis ist `serverInfo`
+# der einzige Identitaetskanal — als `_meta`-Stempel auf jeder Antwort und im
+# Ergebnis von `server/discover`.
+#
+# Gemessen vor dieser Zeile: `MCPServer` deckt `version` mit `""` vor, und das
+# SDK setzt nichts eigenes ein («An unversioned server reports an empty
+# `version`; the SDK never substitutes its own»). Jede Antwort trug also
+# `{"name": "lindas-mcp", "version": ""}` — in beiden Aeren, ueber stdio wie
+# ueber HTTP. `version` ist in `Implementation` ein Pflichtfeld; der leere
+# String erfuellt es der Form nach und sagt nichts.
+#
+# Version, Beschreibung und URL kommen aus den Metadaten der installierten
+# Distribution (`_version`), nicht aus Literalen hier: `check_version_sync.py`
+# verbietet eine hartkodierte Version in `src/` ausdruecklich, und fuer die
+# beiden anderen gilt derselbe Grund, nur ohne Gate. Der Titel ist kein
+# Metadatum und steht deshalb als einziger im Klartext.
+#
+# `icons` bleibt leer: dafuer braeuchte es eine gehostete Grafik, und eine
+# erfundene URL waere schlechter als das Feld wegzulassen.
+mcp = MCPServer(
+    "lindas-mcp",
+    title="LINDAS — Swiss Linked Data Service",
+    version=__version__,
+    description=__summary__,
+    website_url=__homepage__,
+    instructions=SERVER_INSTRUCTIONS,
+    lifespan=_lifespan,
+    cache_hints=CACHE_HINTS,
+)
 
 Language = Literal["de", "fr", "it", "rm", "en"]
 
@@ -155,7 +205,40 @@ def mask_errors(fn: Callable[..., Awaitable[_T]]) -> Callable[..., Awaitable[_T]
 
 
 async def _log_call(ctx: Context | None, tool: str, started: float, **fields: Any) -> None:
-    """Emit a structured per-call log line (OBS-003) and an MCP debug event."""
+    """Emit a structured per-call log line (OBS-003) and an MCP debug event.
+
+    `ctx.debug` traegt seit `mcp` 2.x ein `MCPDeprecationWarning` («The logging
+    capability is deprecated as of 2026-07-28, SEP-2577»), und weil die
+    Kategorie von `UserWarning` erbt statt von `DeprecationWarning`, steht sie
+    standardmaessig im stderr — dreimal je Prozess, einmal pro Aufrufstelle in
+    der Kette `ctx.debug` → `ctx.log` → `session.send_log_message`.
+
+    Der Aufruf bleibt trotzdem stehen, und das ist keine Nachlaessigkeit.
+    Veraltet ist die *Faehigkeit* — `logging/setLevel` und die Aushandlung
+    darum. Die Benachrichtigung selbst ist auf `2026-07-28` der vorgesehene
+    Weg; nur meldet sich der Client jetzt pro Anfrage an, ueber den
+    reservierten `_meta`-Schluessel `io.modelcontextprotocol/logLevel`. Das
+    SDK setzt das durch (`allowed_log_levels`), bevor irgendetwas den Draht
+    sieht.
+
+    Gemessen, statt aus dem Marker geschlossen — derselbe Aufruf, zweimal
+    ueber den modernen Pfad:
+
+      * ohne den Schluessel: `application/json`, keine
+        `notifications/message` — der Eintrag wird verworfen;
+      * mit `logLevel: "debug"`: `text/event-stream` und der Eintrag
+        `{"level": "debug", "data": "<tool> done in N ms"}`.
+
+    Wer die Warnung durch Loeschen des Aufrufs stillstellt, nimmt also einem
+    Client etwas weg, das die Zielrevision ausdruecklich vorsieht und das er
+    angefordert hat. `tests/test_spec_2026_07_28.py` haelt beide Zweige fest.
+
+    Nicht unterdrueckt wird sie ebenso bewusst: `warnings.catch_warnings`
+    schaltet den globalen Warnungszustand um, und in einem Server, der
+    nebenlaeufig Anfragen bedient, verschluckte dieses Fenster auch die
+    Warnungen anderer Koroutinen. Drei Zeilen je Prozess sind der guenstigere
+    Preis — und sie zeigen an, wenn die Flaeche eines Tages wirklich faellt.
+    """
     ms = round((time.monotonic() - started) * 1000)
     logger.info("lindas_mcp.tool_call", tool=tool, ms=ms, **fields)
     if ctx is not None:
