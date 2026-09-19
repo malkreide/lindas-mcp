@@ -365,7 +365,7 @@ jetzt oben in der Belegliste.
 `swiss-courts-mcp` #73 entstand er als «Running» und wurde eine Minute später
 zu «Completed» editiert — dieselbe `id` (`5739967817`); auf #74 stand schon
 beim Anlegen «Completed». **`created_at` sagt damit nichts über den Zustand des
-Reviews.** Über alle acht Läufe: siebenmal `created_at` ≠ `updated_at` (der
+Reviews.** Über alle neun Läufe: achtmal `created_at` ≠ `updated_at` (der
 Kommentar wurde editiert), einmal identisch (#74). Die Ausnahme ist selten —
 und genau deshalb gefährlich, weil sie die Regel «erst Running, dann
 Completed» plausibel aussehen lässt. Wer den Kommentar einmal liest und
@@ -391,7 +391,7 @@ und die Antwort lautet: **als beides, aber die Tabelle sagt es nicht.**
 
 | | Tabelle | `get_reviews` | `get_review_comments` |
 |---|---|---|---|
-| ohne Befund (7 Läufe) | `✅ Completed` | `[]` | 0 Threads |
+| ohne Befund (8 Läufe) | `✅ Completed` | `[]` | 0 Threads |
 | mit Befund (#55) | `✅ Completed` | 1 Objekt «💡 Codex Review» | 1 Thread, P2 |
 
 Die Tabelle ist in beiden Fällen **zeichengleich** — keine zusätzliche Zeile,
@@ -401,13 +401,13 @@ auf welchem Commit; sie belegt nicht, **mit welchem Ergebnis**. Dafür bleibt
 `get_reviews` nötig, und bei einem Treffer `get_review_comments` für die
 Threads.
 
-Was auch diese acht Läufe **nicht** hergeben: dass «Completed» ohne
+Was auch diese neun Läufe **nicht** hergeben: dass «Completed» ohne
 Befund-Kommentar «kein Befund» beweist. Belegt ist nur, dass in keiner
 bekannten Form einer gepostet wurde. Das Fehlen der Befundlos-Meldung, die die
 erste Schublade als Marker führt, bleibt unerklärt.
 
-**Ein Merge bricht den Lauf nicht ab.** Alle acht PRs wurden zwischen zwei und
-55 Sekunden nach «ready for review» gemergt, und alle acht Reviews liefen
+**Ein Merge bricht den Lauf nicht ab.** Alle neun PRs wurden zwischen zwei und
+55 Sekunden nach «ready for review» gemergt, und alle neun Reviews liefen
 danach zu Ende. Der Review ist also nicht verloren — er kommt bloss zu spät,
 um noch etwas zu verhindern, und ein Befund steht dann schon im Default-Branch.
 Auf #55 war es genau so.
@@ -420,34 +420,43 @@ Auf #55 war es genau so.
 | `lindas-mcp` | #58 | 65 s | — |
 | `lindas-mcp` | #59 | 65 s | — |
 | `lindas-mcp` | #56 | 66 s | — |
+| `lindas-mcp` | #63 | 71 s | — |
 | `swiss-courts-mcp` | #73 | 72 s | — |
 | `lindas-mcp` | #57 | 75 s | — |
 | `lindas-mcp` | #62 | 76 s | — |
 | `lindas-mcp` | #55 | **173 s** | **P2** |
 
-Sieben liegen eng beieinander (63–76 s), einer nicht — **und der Ausreisser ist
+Acht liegen eng beieinander (63–76 s), einer nicht — **und der Ausreisser ist
 der einzige mit Befund.** Hier stand vorher, zwei Punkte zeigten die
 Grössenordnung und «wer eine Minute wartet, hat den Prüfer». Das ist doppelt
 widerlegt: Eine Minute hätte **keinen einzigen** Lauf erwischt, der schnellste
-brauchte 63 Sekunden. Und wer bis 76 Sekunden wartet, hat sieben von acht —
+brauchte 63 Sekunden. Und wer bis 76 Sekunden wartet, hat acht von neun —
 und verpasst genau den, auf den es ankam. Ob ein Befund die Mehrzeit
 *verursacht*, ist mit einer Beobachtung nicht belegt — die Vermutung liegt
 nahe und bleibt Vermutung. Für die Praxis genügt die Spanne: **63 bis 173
 Sekunden**, und wer sich am unteren Ende orientiert, richtet sich nach den
 Läufen, die nichts zu sagen hatten.
 
-**Woher die Zeiten kommen, ist nicht bei allen gleich gut belegt.** Bei #62 ist
-der «ready»-Zeitpunkt die Zustellsekunde des Webhooks (08:42:56 UTC), nicht ein
-aus der API gelesener Wert — die Timeline gibt der Connector nicht her. Die
-76 s tragen damit ±1 s Unschärfe. Primär belegt ist bei diesem Lauf nur die
-Spanne ab dem Merge: 08:42:58 UTC bis «Completed» 08:44:12,32 UTC, also
-**74 Sekunden**. Für die Praxis ändert das nichts; für eine spätere Auswertung,
-die auf die Sekunde geht, schon.
+**Woher die Zeiten kommen, ist nicht bei allen gleich gut belegt.** Bei #62 und
+#63 ist der «ready»-Zeitpunkt die Zustellsekunde des Webhooks (08:42:56 bzw.
+08:59:00 UTC), nicht ein aus der API gelesener Wert — die Timeline gibt der
+Connector nicht her, `issue_read` kennt keine Timeline-Methode. Beide Werte
+tragen damit ±1 s Unschärfe. Primär belegt ist bei ihnen nur die Spanne ab dem
+Merge: bei #62 **74 Sekunden** (08:42:58 → 08:44:12,32 UTC), bei #63
+**68 Sekunden** (08:59:03 → 09:00:11,49 UTC).
+
+**Für die sieben älteren Punkte ist die Herkunft ungeprüft.** Sie stammen aus
+früheren Sessions; ob ihr «ready» aus der API kam oder ebenfalls aus einem
+Wake-Ereignis, steht nirgends und lässt sich nachträglich nicht mehr klären.
+Wer die Reihe auf die Sekunde auswertet, wertet damit Zahlen verschiedener
+Güte in einer Spalte aus. Für die Praxisregel — nach «ready» zwei Minuten
+warten — trägt das ohne weiteres; für eine feinere Aussage nicht. Künftige
+Punkte tragen ihre Herkunft deshalb mit.
 
 **Die 👍-Reaktion blieb erneut aus** — `reactions.total_count: 0` auf allen
-acht Kommentaren, während der Infokasten sie weiter behauptet. Damit steht
-die Behauptung des Kastens gegen vierzehn Beobachtungen (sechs am 23.8.,
-acht am 19.9.).
+neun Kommentaren, während der Infokasten sie weiter behauptet. Damit steht
+die Behauptung des Kastens gegen fünfzehn Beobachtungen (sechs am 23.8.,
+neun am 19.9.).
 
 Und ein befundloser Lauf ist kein Freispruch. Am 23.8. lief derselbe Text durch
 42 Reviews: 36 meldeten denselben P2-Befund, 6 die Befundlos-Meldung — gleiche
@@ -466,17 +475,17 @@ Findet nur, wo er *kommentiert* hat. Repos ohne PR-Aktivität tauchen nicht auf
 
 Zweiter Weg, den Prüfer zu verlieren, ganz ohne Kontingentproblem: zu schnell
 mergen. Am 21./22.8. lagen zwischen «ready for review» und Merge mehrfach drei
-bis fünf Sekunden, am 19.9. noch siebenmal dasselbe (`swiss-courts-mcp` #73:
+bis fünf Sekunden, am 19.9. noch achtmal dasselbe (`swiss-courts-mcp` #73:
 drei Sekunden, #74: vier; `lindas-mcp` #56: drei, #57: drei, #58: vier,
-#59: **zwei**, #62: **zwei** — und #55 mit 55 Sekunden immer noch zu früh).
-Die zwei Sekunden auf #59 und #62 sind die bisher kürzeste beobachtete Spanne;
-die «drei bis fünf Sekunden» von August sind damit keine Untergrenze mehr.
-Codex wird beim Umschalten von Draft auf ready ausgelöst und braucht danach
-Zeit; wer sofort mergt, hat das Häkchen gesetzt und den Review nicht
-abgewartet.
+#59: **zwei**, #62: **zwei**, #63: drei — und #55 mit 55 Sekunden immer noch
+zu früh). Die zwei Sekunden auf #59 und #62 sind die bisher kürzeste
+beobachtete Spanne; die «drei bis fünf Sekunden» von August sind damit keine
+Untergrenze mehr. Codex wird beim Umschalten von Draft auf ready ausgelöst und
+braucht danach Zeit; wer sofort mergt, hat das Häkchen gesetzt und den Review
+nicht abgewartet.
 
 Wie viel Zeit, steht oben bei der fünften Form: **63 bis 173 Sekunden** von
-«ready» bis «Completed», acht Läufe. Der Lauf wird dabei nicht abgebrochen —
+«ready» bis «Completed», neun Läufe. Der Lauf wird dabei nicht abgebrochen —
 er endet nur, wenn niemand mehr etwas davon hat, und ein Befund steht dann
 schon im Default-Branch.
 
@@ -622,9 +631,9 @@ ist eine Aussage über den Zustand *im Moment des Merges*, und genau die liess
 sich hier nicht wahr ankreuzen: Codex läuft erst beim Umschalten von Draft auf
 ready an und braucht danach Zeit.
 
-Sechs der acht Läufe in der Messreihe von Teil 1 («Die fünfte Form») stammen
-aus diesem Repo — #55 bis #59 und #62. Alle sechs wurden zwischen zwei und 55
-Sekunden nach «ready» gemergt, während der Review noch lief. Auf #55 kam
+Sieben der neun Läufe in der Messreihe von Teil 1 («Die fünfte Form») stammen
+aus diesem Repo — #55 bis #59, #62 und #63. Alle sieben wurden zwischen zwei
+und 55 Sekunden nach «ready» gemergt, während der Review noch lief. Auf #55 kam
 **116 Sekunden nach dem Merge** ein richtiger P2-Befund (Merge 06:36:31,
 Review-Objekt `submitted_at` 06:38:27).
 
