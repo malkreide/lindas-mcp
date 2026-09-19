@@ -453,6 +453,42 @@ Güte in einer Spalte aus. Für die Praxisregel — nach «ready» zwei Minuten
 warten — trägt das ohne weiteres; für eine feinere Aussage nicht. Künftige
 Punkte tragen ihre Herkunft deshalb mit.
 
+**Und die Reihe misst einen engeren Fall, als ihre Überschrift verspricht.**
+Alle neun Läufe stammen von einem Konto, aus zwei Repos und von einem einzigen
+Kalendertag (19.9.2026); alle neun wurden binnen 2 bis 55 Sekunden nach
+«ready» gemergt. Gemessen ist damit die Dauer unter genau diesen Bedingungen,
+nicht «wie lange Codex braucht».
+
+**Die Diff-Grösse wurde nie mitgeführt — und sie fällt mit dem Ausreisser
+zusammen.** Nachgemessen an den Merge-Commits der sieben `lindas-mcp`-Läufe,
+nach Grösse sortiert:
+
+| PR | Diff | Dauer | Befund |
+|---|---|---|---|
+| #55 | 6 Dateien, +632 | **173 s** | **P2** |
+| #56 | 5 Dateien, +212 | 66 s | — |
+| #59 | 1 Datei, +96 | 65 s | — |
+| #63 | 1 Datei, +40 | 71 s | — |
+| #62 | 1 Datei, +39 | 76 s | — |
+| #57 | 2 Dateien, +32 | 75 s | — |
+| #58 | 1 Datei, +31 | 65 s | — |
+
+#55 ist dreierlei zugleich: der einzige mit Befund, der mit Abstand grösste
+Diff und der einzige Ausreisser in der Dauer. Drei Eigenschaften in einer
+einzigen Beobachtung — die Reihe kann sie nicht trennen. Der Satz oben, der
+Ausreisser sei «der einzige mit Befund», stimmt und legt trotzdem eine Ursache
+nahe, die ebenso gut die Diff-Grösse sein kann.
+
+Ganz aufgeht die Grössen-Erklärung allerdings auch nicht: #56 ist mit 212
+eingefügten Zeilen der zweitgrösste Diff und liegt mit 66 s mitten im Band,
+und unter den kleinen sagt die Grösse gar nichts (96 Zeilen → 65 s, 31 Zeilen
+→ 65 s). Beide Erklärungen hängen also an derselben einen Beobachtung. Wer die
+Frage klären will, braucht einen grossen Diff **ohne** Befund oder einen
+kleinen **mit** — beides fehlt.
+
+Für `swiss-courts-mcp` #73 und #74 ist die Grösse hier nicht nachmessbar; das
+Repo lag ausserhalb der Session, in der die Messung entstand.
+
 **Die 👍-Reaktion blieb erneut aus** — `reactions.total_count: 0` auf allen
 neun Kommentaren, während der Infokasten sie weiter behauptet. Damit steht
 die Behauptung des Kastens gegen fünfzehn Beobachtungen (sechs am 23.8.,
