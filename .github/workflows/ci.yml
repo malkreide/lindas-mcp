@@ -10,6 +10,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
+      # GitHubs Vorgabe ist `fail-fast: true`: faellt ein Feld, bricht es die
+      # uebrigen ab, und im Log steht dort «cancelled» statt eines Ergebnisses.
+      # Bei vier Feldern kostet das am meisten. Die erste Frage bei einem roten
+      # Lauf ist, ob der Fehler nur auf einer Version auftritt oder auf allen —
+      # ein abgebrochenes Feld beantwortet sie nicht, und 3.10 ist hier das
+      # Feld, das am ehesten allein faellt.
+      fail-fast: false
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
 

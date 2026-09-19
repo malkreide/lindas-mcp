@@ -668,9 +668,13 @@ Fallback `0.0.0+source` bleibt erlaubt, erkannt am lokalen Segment nach `+`.
 
 **Die Matrix ist die breiteste im Portfolio: 3.10 bis 3.13**, vier Felder
 statt der üblichen drei. Alle fünf Gates laufen auf allen vieren, keine
-`if:`-Ausnahme. Ein `fail-fast: false` steht nicht da — eine rote 3.10 bricht
-die übrigen drei ab, bevor sie etwas sagen, und 3.10 ist hier das Feld, das
-am ehesten allein fällt.
+`if:`-Ausnahme. **`fail-fast: false` steht jetzt da.** Vorher galt GitHubs
+Vorgabe `true`: eine rote 3.10 brach die übrigen drei ab, bevor sie etwas
+sagen konnten — und 3.10 ist hier das Feld, das am ehesten allein fällt. Die
+erste Frage bei einem roten Lauf ist, ob der Fehler nur eine Version trifft
+oder alle vier; ein abgebrochenes Feld beantwortet sie nicht, es verschweigt
+sie. Vier volle Ergebnisse kosten Rechenzeit, ein abgebrochener Lauf kostet
+eine Runde.
 
 **Live-Tests: geplanter Workflow vorhanden.** `.github/workflows/live.yml`,
 `cron: "17 5 * * 1"` plus `workflow_dispatch`. Die Live-Suite ist also nicht bloss
