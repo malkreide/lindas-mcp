@@ -459,3 +459,35 @@ am ehesten allein fällt.
 per `-m "not live"` ausgeschlossen — DRIFT-005 ist hier erfüllt. `schedule`
 greift nur auf dem Default-Branch (`main`): Änderungen am Workflow wirken erst
 nach dem Merge, vorher von Hand per `workflow_dispatch`.
+
+**Das PR-Template führt keine Codex-Checkliste mehr, mit Absicht.** Dort stand
+«Codex-Review beantwortet oder behoben — kein offener Befund beim Merge». Das
+ist eine Aussage über den Zustand *im Moment des Merges*, und genau die konnte
+in diesem Repo nicht wahr angekreuzt werden: Codex läuft erst beim Umschalten
+von Draft auf ready an und braucht danach Zeit.
+
+Am 19.9.2026 zweimal gemessen, am selben Morgen:
+
+| PR | ready | Merge | Codex startet | Ergebnis |
+|---|---|---|---|---|
+| #55 | 06:35:36 | 06:36:31 | 06:35:42 | «Completed» 06:38:29, **P2-Befund**, 117 s nach dem Merge |
+| #56 | 06:56:42 | 06:56:45 | 06:56:47 | Start 2 s **nach** dem Merge |
+
+Ein Kästchen, das eine Bedingung behauptet, die der Ablauf systematisch
+verhindert, ist schlechter als keines: Es sieht nach Prüfung aus und ist keine.
+Der P2 auf #55 war richtig und nicht offensichtlich — gefunden wurde er nur,
+weil jemand nach dem Merge nachgesehen hat, nicht wegen des Häkchens.
+
+**Was dadurch nicht wegfällt:** Teil 1 bleibt gültig — ein Codex-Review, den
+es gibt, wird beantwortet oder behoben. Gestrichen ist die Behauptung, das sei
+beim Merge bereits geschehen, nicht die Pflicht danach. Der Befund auf #55 ist
+in #56 behoben worden, nach dem Merge.
+
+Wer die Zusicherung zurückwill, braucht den Ablauf und nicht das Kästchen:
+nach «ready» auf ein Review-Objekt **oder** eine Befundlos-Meldung warten
+(zwei Abfragen, siehe Teil 1), dann mergen. Gemessene Dauer auf #55: rund
+drei Minuten. Und Vorsicht beim Abholen — der Abschluss kam dort als **Edit**
+des bestehenden Summary-Kommentars (gleiche ID, `updated_at` wanderte von
+06:35:44 auf 06:38:29). Ein Edit löst kein `issue_comment`-Ereignis aus; wer
+auf ein Webhook wartet, wartet vergeblich. Auf `updated_at` schauen, nicht auf
+neue Kommentare.
