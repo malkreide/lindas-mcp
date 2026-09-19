@@ -203,6 +203,45 @@ Quelle heute zuoberst hat, prüft der Test den Tag: am 25.8.2026 rot, weil die
 neueste Zürcher Publikation zufällig Lose hatte, am 26.8. grün, ohne dass sich
 etwas geändert hätte. Den Fall gezielt wählen und beide Zweige fahren.
 
+**Und der erste Treffer einer Liste ist kein Stand — schon gar nicht, wenn man
+die Antwort selbst abgeschnitten hat.** Am 19.9.2026 stand in zwei
+Notion-Datenbanken als gemessener Befund, die MCP-Registry führe für
+`lindas-mcp` noch 0.1.0, während Repo und PyPI auf 0.2.1 stünden. Der
+Suchendpunkt liefert aber *alle* Versionen aufsteigend; gelesen worden war die
+erste Zeile einer mit `head -c 800` gekürzten Antwort. Das Feld, das den Stand
+markiert, stand in derselben Antwort — hinter Byte 800:
+
+```
+0.1.0  isLatest=False  published=2026-07-27T14:39:42Z
+0.2.0  isLatest=False  published=2026-08-02T12:47:33Z
+0.2.1  isLatest=True   published=2026-08-02T21:12:50Z
+```
+
+Der Unterschied zum Absatz davor ist die Herkunft der Verstümmelung: dort
+entscheidet die Quelle, was zuoberst liegt, hier hat der Fragende sich die
+Antwort selbst gekürzt. Das ist die gefährlichere Hälfte, weil die Abfrage
+gegen den echten Endpunkt lief und der Befund deshalb wie eine Messung aussah.
+
+Widerlegt hat ihn keine zweite Meinung, sondern das Job-Log von `publish.yml`
+vom 2.8.2026 («Successfully published … version 0.2.1», 21:12:50 UTC), dessen
+Zeitstempel sekundengenau auf dem `publishedAt` der Registry liegt. Aufgefallen
+ist der Fehler auch nicht beim Nachlesen, sondern weil vor dem Nachpublizieren
+die Frage stand, *warum* der Stand alt sein sollte — und drei grüne
+Publish-Läufe dagegen sprachen.
+
+- **Den Stand am Stand-Feld lesen**, nicht am Index 0: `isLatest` oder
+  `version=latest`. Ein grösseres `head` hilft nicht, es verschiebt den
+  Schnitt bloss.
+- **Vor einer schreibenden Korrektur prüfen, warum der Ist-Zustand falsch sein
+  soll.** Ein Fehlbefund, der eine Aktion auslöst, wird durch die Aktion
+  bestätigt statt widerlegt: Ein `mcp-publisher publish` hätte 0.2.1 erneut
+  gemeldet, und niemand hätte je erfahren, dass es schon dort war.
+
+Was die Beobachtung *nicht* hergibt: dass die Registry ihre Versionen immer
+aufsteigend liefert. Gesehen wurde eine Antwort mit drei Versionen an einem
+Tag; eine Zusicherung über die Reihenfolge ist das nicht. Tragfähig ist allein
+`isLatest`.
+
 PR ohne jeden Check ist selten ein Repo ohne CI, meistens ein
 Merge-Konflikt: GitHub berechnet dafür keinen Merge-Commit und startet nichts.
 
