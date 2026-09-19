@@ -30,6 +30,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **`serverInfo` meldete eine leere Version — in beiden Ären, über beide
+  Transporte.** `MCPServer` deckt `version` mit `""` vor und setzt nichts
+  eigenes ein («An unversioned server reports an empty `version`; the SDK never
+  substitutes its own»). Der Server übergab nichts, also trug jede Antwort
+  `{"name": "lindas-mcp", "version": ""}` — gemessen am `initialize`-Ergebnis
+  der Handshake-Ära ebenso wie am `_meta`-Stempel jeder modernen Antwort.
+
+  In `Implementation` ist `version` ein **Pflichtfeld**; der leere String
+  erfüllt es der Form nach und sagt nichts. In der modernen Ära wiegt das
+  schwerer als in der alten: dort gibt es keinen `initialize`-Handshake und
+  damit kein Handshake-Ergebnis — der Stempel ist die einzige Stelle, an der
+  ein Client erfährt, welche Fassung ihm antwortet.
+
+  Gesetzt werden jetzt `version`, `title`, `description` und `websiteUrl`, alle
+  aus den Metadaten der installierten Distribution (`_version`), nicht aus
+  Literalen: `check_version_sync.py` verbietet eine hartkodierte Version in
+  `src/` ausdrücklich, und für Zusammenfassung und URL gilt derselbe Grund, nur
+  ohne Gate. `icons` bleibt leer — dafür bräuchte es eine gehostete Grafik, und
+  eine erfundene URL wäre schlechter als das Feld wegzulassen.
+
+- **README.md nannte den Protokollstand zweimal, und die zweite Fassung war
+  falsch.** Unter `## MCP protocol version` (klein geschrieben, am Dateiende)
+  stand `mcp>=1.28.1`, während `pyproject.toml` seit dem 2.x-Umstieg auf
+  `mcp>=2.0.0,<3` steht. Zwei Abschnitte zum selben Gegenstand, einer veraltet
+  — und der veraltete stand weiter unten, also näher an dem, was jemand beim
+  Überfliegen zuletzt liest. Aufgelöst in **einen** Abschnitt; der Hinweis auf
+  `tool-definitions.lock.json` (SEC-022) ist mitgewandert und nicht verloren.
+
 - **Jeder HTTP-Transport starb beim Start.** `_run_http` setzte
   `mcp.settings.transport_security = security` — die Form vor 2.x. In `mcp` 2.x
   gibt es das Feld nicht, pydantic wirft `ValueError: "Settings" object has no
@@ -50,6 +78,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   Entscheidung mit eigenen Folgen für bestehende Clients.
 
 ### Added
+
+- **`instructions` für die moderne Ära.** `server/discover` gab sie leer
+  zurück. In der Handshake-Ära ist das verschmerzbar — dort liefert
+  `initialize` eine Antwort, in der ein Client Kontext findet. In der modernen
+  Ära gibt es dieses Ergebnis nicht: `server/discover` ist der **einzige**
+  Orientierungskanal. Leer gelassen erfährt ein moderner Client nirgends, dass
+  der Zugriff zweiphasig ist, ruft `query_cube_observations` vor
+  `get_cube_structure` und bekommt Codes zurück, die er nicht auflösen kann.
+  Der Text nennt die Reihenfolge, die Timeout-Neigung des Stores und die
+  BFS-Nummer als Join-Key ins Portfolio.
+
+- **`tests/test_spec_2026_07_28.py` — die moderne Ära, gemessen statt
+  dokumentiert.** Beide READMEs beschrieben den Pro-Request-Envelope, und kein
+  Test fuhr ihn: wäre der moderne Pfad vollständig kaputt gewesen, wäre nichts
+  rot geworden. `test_protocol_version.py` pinnt die Revisionen und fährt einen
+  echten `initialize` — aber nur den.
+
+  Gemessen wird jetzt durch den zusammengebauten Stack: `server/discover` mit
+  `supportedVersions`, der `serverInfo`-Stempel gegen `__version__`, ein echter
+  `tools/call` aus einer Aufzeichnung, die Werkzeuggleichheit beider Ären gegen
+  `tool-definitions.lock.json`, der Envelope als Pflicht, die beiden
+  Header-Mismatches, eine unbekannte Revision, `initialize` als auf dem
+  modernen Pfad nicht erreichbar — und, weil dieser Server standardmässig über
+  stdio läuft, derselbe Einstieg noch einmal als Unterprozess.
+
+  Gegenprobe gefahren: `version` entfernt → drei Tests fallen (auch der
+  stdio-Test), `instructions` entfernt → einer, die übrigen Identitätsfelder
+  entfernt → einer, `ctx.debug` entfernt → einer.
+
+- **Beide Zweige der Log-Anmeldung festgehalten.** Spec `2026-07-28` kehrt die
+  Voreinstellung um: `logging/setLevel` ist weg (SEP-2577), stattdessen meldet
+  sich der Client **pro Anfrage** über den reservierten `_meta`-Schlüssel
+  `io.modelcontextprotocol/logLevel` an; ohne ihn darf der Server nichts
+  senden.
+
+  Das SDK markiert `ctx.debug` deshalb als veraltet, und die Warnung steht
+  standardmässig im stderr — die Kategorie erbt von `UserWarning`, nicht von
+  `DeprecationWarning`. Der naheliegende Schluss wäre, den Aufruf zu löschen.
+  Er ist falsch: veraltet ist die *Fähigkeit*, nicht die Benachrichtigung.
+  Gemessen, derselbe Aufruf zweimal über den modernen Pfad — ohne den
+  Schlüssel `application/json` und keine `notifications/message`, mit
+  `logLevel: "debug"` ein `text/event-stream` mit dem Eintrag darin. Wer die
+  Warnung durch Löschen stillstellt, nimmt einem Client etwas weg, das die
+  Zielrevision vorsieht und das er angefordert hat. Beide Richtungen stehen
+  jetzt als Test; die Begründung steht im Docstring von `_log_call`.
 
 - **Frischehinweise auf `tools/list` und `server/discover`** (SEP-2549, Spec
   `2026-07-28`): `ttlMs` 300000, `cacheScope` `public`. Das SDK setzt beides von

@@ -317,7 +317,29 @@ Zu beachten: `LATEST_PROTOCOL_VERSION` im SDK ist ein Alias auf die **moderne**
 Aera, nicht auf die Handshake-Aera — wer nur dagegen pinnt, laesst genau die
 Aera frei wandern, die heutige Clients tatsaechlich aushandeln.
 
+### Was `2026-07-28` hier aendert
+
+Die moderne Aera kennt keinen `initialize`-Handshake und damit kein
+Handshake-Ergebnis, in dem ein Client erfuehre, mit wem er spricht. Drei Folgen
+daraus werden ausdruecklich bedient statt bei den SDK-Vorgaben belassen:
+
+| Flaeche | Verhalten |
+|---|---|
+| `serverInfo` | Als `_meta`-Stempel auf jeder Antwort und im Ergebnis von `server/discover`. Name, Titel, Version, Beschreibung und Projekt-URL kommen aus den Metadaten der installierten Distribution, nie von Hand geschrieben. `MCPServer` deckt `version` mit `""` vor und setzt nichts eigenes ein — ungesetzt ist es ein Pflichtfeld, das nichts sagt. |
+| `instructions` | Ergebnis von `server/discover` — der einzige Orientierungskanal eines modernen Clients. Nennt die Reihenfolge des Zwei-Phasen-Zugriffs; ohne sie kommen Beobachtungen als Codes zurueck, die niemand aufloesen kann. |
+| Log-Zustellung | `logging/setLevel` gibt es nicht mehr (SEP-2577); der Client meldet sich pro Anfrage ueber den reservierten `_meta`-Schluessel `io.modelcontextprotocol/logLevel` an. Ohne ihn sendet der Server nichts, mit `debug` je Werkzeugaufruf eine `notifications/message` auf dem Strom dieser Anfrage. |
+| `tools/list`, `server/discover` | Tragen `ttlMs` 300000 und `cacheScope` `public` (SEP-2549). |
+
+Gemessen wird das durch den zusammengebauten Stack in
+[`tests/test_spec_2026_07_28.py`](tests/test_spec_2026_07_28.py) — beide Aeren,
+beide Transporte und beide Zweige der Log-Anmeldung. Der Werkzeugvertrag selbst
+haengt unabhaengig an `tool-definitions.lock.json` (SEC-022), und die moderne
+Aera wird gegen genau diese Liste geprueft: die beiden Aeren koennen nicht zu
+zwei verschiedenen Servern unter einer Adresse auseinanderlaufen.
+
 **Update-Politik.** Faellt das Gate, die Konstante nicht blind nachziehen: erst
 das Spec-Changelog zwischen den beiden Revisionen lesen, pruefen, ob sich der
 Server weiterhin richtig verhaelt, dann Konstante, diesen Abschnitt, `README.md`
-und [`CHANGELOG.md`](CHANGELOG.md) gemeinsam bewegen.
+und [`CHANGELOG.md`](CHANGELOG.md) gemeinsam bewegen. SDK-Bumps sind aus
+demselben Grund eine gepruefte Aenderung: jede protokollwirksame Anhebung wird
+in [`CHANGELOG.md`](CHANGELOG.md) benannt.
