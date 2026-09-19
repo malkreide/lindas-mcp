@@ -568,21 +568,20 @@ nach dem Merge, vorher von Hand per `workflow_dispatch`.
 
 **Das PR-Template führt keine Codex-Checkliste mehr, mit Absicht.** Dort stand
 «Codex-Review beantwortet oder behoben — kein offener Befund beim Merge». Das
-ist eine Aussage über den Zustand *im Moment des Merges*, und genau die konnte
-in diesem Repo nicht wahr angekreuzt werden: Codex läuft erst beim Umschalten
-von Draft auf ready an und braucht danach Zeit.
+ist eine Aussage über den Zustand *im Moment des Merges*, und genau die liess
+sich hier nicht wahr ankreuzen: Codex läuft erst beim Umschalten von Draft auf
+ready an und braucht danach Zeit.
 
-Am 19.9.2026 zweimal gemessen, am selben Morgen:
-
-| PR | ready | Merge | Codex startet | Ergebnis |
-|---|---|---|---|---|
-| #55 | 06:35:36 | 06:36:31 | 06:35:42 | «Completed» 06:38:29, **P2-Befund**, 117 s nach dem Merge |
-| #56 | 06:56:42 | 06:56:45 | 06:56:47 | Start 2 s **nach** dem Merge |
+Fünf der sieben Läufe in der Messreihe von Teil 1 («Die fünfte Form») stammen
+aus diesem Repo — #55 bis #59. Alle fünf wurden zwischen zwei und 55 Sekunden
+nach «ready» gemergt, während der Review noch lief. Auf #55 kam **116 Sekunden
+nach dem Merge** ein richtiger P2-Befund (Merge 06:36:31, Review-Objekt
+`submitted_at` 06:38:27).
 
 Ein Kästchen, das eine Bedingung behauptet, die der Ablauf systematisch
 verhindert, ist schlechter als keines: Es sieht nach Prüfung aus und ist keine.
-Der P2 auf #55 war richtig und nicht offensichtlich — gefunden wurde er nur,
-weil jemand nach dem Merge nachgesehen hat, nicht wegen des Häkchens.
+Der P2 auf #55 wurde gefunden, weil jemand nach dem Merge nachgesehen hat,
+nicht wegen des Häkchens.
 
 **Was dadurch nicht wegfällt:** Teil 1 bleibt gültig — ein Codex-Review, den
 es gibt, wird beantwortet oder behoben. Gestrichen ist die Behauptung, das sei
@@ -590,35 +589,14 @@ beim Merge bereits geschehen, nicht die Pflicht danach. Der Befund auf #55 ist
 in #56 behoben worden, nach dem Merge.
 
 Wer die Zusicherung zurückwill, braucht den Ablauf und nicht das Kästchen:
-nach «ready» warten, bis der Review durch ist, dann mergen. Zwei gemessene
-Laufzeiten, Start bis «Completed»: **167 s** (#55) und **61 s** (#56). Das
-ist eine Spanne aus zwei Beobachtungen und kein Erwartungswert — wer daraus
-«etwa eine Minute» macht, mergt beim nächsten Mal zu früh.
+nach «ready» warten, bis der Review durch ist, dann mergen. Wie lange das
+dauert, woran man den Abschluss überhaupt bemerkt und warum die Statustabelle
+allein nichts über das *Ergebnis* sagt — das steht in Teil 1 und nur dort.
 
-**Der Connector in diesem Repo meldet anders, als Teil 1 es beschreibt.**
-Dort steht, Befundlosigkeit komme als gewöhnlicher Issue-Kommentar («Codex
-Review: Didn't find any major issues»). Hier nicht. Gemessen auf #56:
-
-```
-Summary-Kommentar 5740067789: «✅ Completed», 06:57:48
-get_reviews         -> []          (kein Review-Objekt)
-get_review_comments -> 0 Threads
-get_comments        -> nur der Summary-Kommentar
-reactions           -> 0           (kein 👍, kein 👀)
-```
-
-Signal ist also allein die Statustabelle in einem Kommentar, der
-**fortgeschrieben** wird: «🔄 Running since …» wird zu «✅ Completed …»,
-gleiche ID. Ein Befund kommt zusätzlich als Review-Objekt mit Threads (#55,
-`get_reviews` und `get_review_comments`). Beide Abfragen bleiben nötig; neu
-ist, dass die dritte — der Befundlos-Prosatext — hier nie erscheint. Wer auf
-ihn wartet, hält einen sauberen Lauf für einen ausgebliebenen.
-
-Und Vorsicht beim Abholen: Das Fortschreiben ist ein **Edit**, und ein Edit
-löst kein `issue_comment`-Ereignis aus. Auf #55 wanderte `updated_at` von
-06:35:44 auf 06:38:29, ohne dass ein Webhook kam — der P2-Befund dort wurde
-nur gefunden, weil jemand gepollt hat. Auf `updated_at` schauen, nicht auf
-neue Kommentare.
-
-Die 👍-Reaktion, die der Infokasten unter jedem Review verspricht, kam auf
-keinem der beiden PRs. Teil 1 sagt es schon: Der Kasten ist keine Quelle.
+Hier stand es eine Zeitlang ein zweites Mal, mit eigenen Zahlen auf einer
+anderen Bezugsgrösse (Codex-Start statt «ready») und mit dem Satz, der
+Connector melde «anders, als Teil 1 es beschreibt». Beides war beim Schreiben
+richtig und zwei Merges später falsch: Teil 1 beschreibt die Form inzwischen
+selbst, ausführlicher und über zwei Repos gemessen. Zwei Fassungen desselben
+Befunds altern unabhängig voneinander — die zweite gehört gelöscht, sobald die
+erste sie einholt, und nicht gepflegt.
