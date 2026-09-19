@@ -217,6 +217,11 @@ markiert, stand in derselben Antwort — hinter Byte 800:
 0.2.1  isLatest=True   published=2026-08-02T21:12:50Z
 ```
 
+Die Tabelle ist die Lesung jenes Vormittags und bleibt deshalb so stehen.
+Noch am selben Tag hat 0.3.0 sie überholt — wer sie für den heutigen Stand
+hält, macht denselben Fehler, den der Absatz beschreibt, nur eine Ebene
+höher: eine datierte Beobachtung ist kein Stand.
+
 Der Unterschied zum Absatz davor ist die Herkunft der Verstümmelung: dort
 entscheidet die Quelle, was zuoberst liegt, hier hat der Fragende sich die
 Antwort selbst gekürzt. Das ist die gefährlichere Hälfte, weil die Abfrage
@@ -642,7 +647,7 @@ etwas über Gates behauptet, liest vorher `ci.yml`.
 Lauf sagt es selbst:
 
 ```
-Versions-Sync OK (0.2.1; geprüft: server.json → version,
+Versions-Sync OK (0.3.0; geprüft: server.json → version,
 server.json → packages[0].version; keine hartkodierte Version in src/)
 ```
 
