@@ -154,6 +154,117 @@ async def test_observations_resolve_codes_to_labels():
     assert data["observations"][0]["Warnregion"] == "Alpennordhang"
 
 
+@respx.mock
+async def test_beobachtungen_loesen_labels_ohne_vorherigen_strukturaufruf_auf():
+    """Die Zusicherung, auf der die `instructions` des Servers stehen.
+
+    Ein Codex-Review auf PR #55 hat belegt, dass der Text dort das Gegenteil
+    behauptete: der Client muesse erst `get_cube_structure` rufen, sonst
+    bekaeme er «codes you cannot interpret». Nachgemessen stimmt das nicht —
+    `cube.get_observations` holt die Struktur selbst und laedt jede Codeliste,
+    bevor es antwortet. Ein Strukturaufruf davor wiederholt nur Abfragen.
+
+    Dieser Test faehrt deshalb den Werkzeugpfad OHNE jeden vorherigen Aufruf
+    und zaehlt zugleich mit, was an den Endpunkt geht: die Strukturabfrage
+    muss darin vorkommen, sonst belegte der Test nur das Label und nicht, wo
+    es herkommt. Faellt er, ist die Aussage in `SERVER_INSTRUCTIONS` und in
+    beiden READMEs wieder falsch.
+    """
+    from urllib.parse import unquote_plus
+
+    gesehen: list[str] = []
+
+    def handler(request):
+        q = unquote_plus(str(request.url)) + request.content.decode("utf-8", "ignore")
+        gesehen.append(q)
+        if "observationConstraint" in q and "sh:in ?list" in q:
+            return httpx.Response(
+                200,
+                json=_results(
+                    {"value": "https://x/region/1805", "ident": "1805", "label": "Alpennordhang"}
+                ),
+            )
+        if "observationConstraint" in q:
+            return httpx.Response(
+                200,
+                json=_results(
+                    {
+                        "path": "https://x/region",
+                        "name": "Warnregion",
+                        "kind": "https://cube.link/KeyDimension",
+                        "has_codelist": "true",
+                    }
+                ),
+            )
+        if "cube:Cube" in q and "schema:name" in q and "COUNT" not in q:
+            return httpx.Response(200, json=_results({"name": "Warnungen"}))
+        if "observationSet" in q:
+            return httpx.Response(
+                200,
+                json=_results(
+                    {
+                        "obs": "https://x/obs/1",
+                        "p": "https://x/region",
+                        "o": "https://x/region/1805",
+                    }
+                ),
+            )
+        return httpx.Response(200, json=_results())
+
+    respx.route(host="lindas.admin.ch").mock(side_effect=handler)
+
+    ergebnis = await server.query_cube_observations(cube_uri="https://x/c", limit=10)
+
+    assert ergebnis.labels_resolved is True
+    assert ergebnis.observations[0]["Warnregion"] == "Alpennordhang", (
+        "ohne vorherigen get_cube_structure-Aufruf kam kein Label zurueck"
+    )
+    assert any("observationConstraint" in q for q in gesehen), (
+        "die Struktur wurde nicht im Werkzeug selbst geholt — dann saehe der "
+        "Aufrufer sie nirgends, und der Doppelaufruf waere doch noetig"
+    )
+
+
+@respx.mock
+async def test_die_struktur_gibt_die_codeliste_nicht_her():
+    """Der zweite Teil desselben Befunds, und der ueberraschendere.
+
+    Selbst wer `get_cube_structure` vorher ruft, bekommt die Codeliste nicht:
+    `Dimension` fuehrt `has_codelist` als Flag und keine Eintraege. Ein
+    Strukturaufruf taugt also auch dann nicht als Decodierhilfe, wenn jemand
+    `resolve_labels=False` faehrt. Ohne diesen Fall liesse sich der Text
+    wieder auf «ruf erst die Struktur, dann kannst du decodieren» drehen.
+    """
+    from urllib.parse import unquote_plus
+
+    def handler(request):
+        q = unquote_plus(str(request.url)) + request.content.decode("utf-8", "ignore")
+        if "observationConstraint" in q:
+            return httpx.Response(
+                200,
+                json=_results(
+                    {
+                        "path": "https://x/region",
+                        "name": "Warnregion",
+                        "kind": "https://cube.link/KeyDimension",
+                        "has_codelist": "true",
+                    }
+                ),
+            )
+        if "cube:Cube" in q and "schema:name" in q and "COUNT" not in q:
+            return httpx.Response(200, json=_results({"name": "Warnungen"}))
+        return httpx.Response(200, json=_results())
+
+    respx.route(host="lindas.admin.ch").mock(side_effect=handler)
+
+    struktur = await server.get_cube_structure(cube_uri="https://x/c")
+    dimension = struktur.dimensions[0]
+
+    assert dimension.has_codelist is True
+    gefuehrte_felder = set(dimension.model_dump())
+    assert gefuehrte_felder == {"path", "name", "kind", "has_codelist"}, gefuehrte_felder
+
+
 # --------------------------------------------------------------------------
 # Tools
 # --------------------------------------------------------------------------

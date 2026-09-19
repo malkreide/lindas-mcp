@@ -58,17 +58,24 @@ Fedlex URI you can resolve with [fedlex-mcp](https://github.com/malkreide/fedlex
 
 ## The two-phase access pattern
 
-LINDAS cubes are self-describing but coded. Reading them well means two steps,
-which this server enforces:
+LINDAS cubes are self-describing but coded, and the server does two steps to
+read them:
 
-1. **Structure first** — `get_cube_structure` reads the cube's SHACL shape: its
-   dimensions (filterable axes), its measures (the numbers), and which
-   dimensions carry code lists.
-2. **Data second** — `query_cube_observations` reads the observations and
-   resolves coded values to human labels using the structure from step 1.
+1. **Structure** — the cube's SHACL shape: its dimensions (filterable axes),
+   its measures (the numbers), and which dimensions carry code lists.
+2. **Data** — the observations, with coded values resolved to human labels
+   using that structure.
 
 > **Mnemonic: «LINDAS speaks in postcodes, not place names.»** An observation
 > says region `1805`; the server turns that into «Alpennordhang» for you.
+
+**Both steps happen inside `query_cube_observations`.** It fetches the
+structure itself, so a caller does not have to call `get_cube_structure`
+first to get readable rows — doing so only repeats the cube-metadata and
+dimension queries. `get_cube_structure` is the tool for finding out what a
+cube *contains* (dimension names, key vs. measure, licence) and for writing a
+`run_sparql` query against it. It reports only whether a dimension has a code
+list, not the entries, so it is not a decoding aid either.
 
 ---
 
@@ -256,7 +263,7 @@ explicitly rather than left at the SDK's defaults:
 | Surface | Behaviour |
 |---|---|
 | `serverInfo` | Stamped into `_meta` on every response and into `server/discover`. Name, title, version, description and website URL are resolved from the installed distribution's metadata, never written by hand. `MCPServer` defaults `version` to `""` and substitutes nothing, so an unset version is a required field that says nothing. |
-| `instructions` | Returned by `server/discover` — the only orientation channel a modern client has. It states the two-phase access order, without which observations come back as codes nobody can resolve. |
+| `instructions` | Returned by `server/discover` — the only orientation channel a modern client has. It names the entry point, says that `query_cube_observations` resolves labels on its own, and says what `get_cube_structure` is actually for. |
 | Log delivery | `logging/setLevel` is gone (SEP-2577); a client opts in per request via the reserved `_meta` key `io.modelcontextprotocol/logLevel`. Without it the server sends nothing; with `debug` it sends one `notifications/message` per tool call on that request's stream. |
 | `tools/list`, `server/discover` | Carry `ttlMs` 300000 and `cacheScope` `public` (SEP-2549). |
 

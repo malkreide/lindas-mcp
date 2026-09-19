@@ -59,17 +59,25 @@ ist eine Fedlex-URI, die du mit [fedlex-mcp](https://github.com/malkreide/fedlex
 
 ## Der Zwei-Phasen-Zugriff
 
-LINDAS-Cubes sind selbstbeschreibend, aber codiert. Sie gut zu lesen heisst zwei
-Schritte, die dieser Server erzwingt:
+LINDAS-Cubes sind selbstbeschreibend, aber codiert. Der Server geht in zwei
+Schritten vor, um sie zu lesen:
 
-1. **Struktur zuerst** — `get_cube_structure` liest die SHACL-Shape des Cubes:
-   Dimensionen (filterbare Achsen), Measures (die Zahlen) und welche Dimensionen
-   Codelisten tragen.
-2. **Daten danach** — `query_cube_observations` liest die Observations und löst
-   codierte Werte mit der Struktur aus Schritt 1 zu Labels auf.
+1. **Struktur** — die SHACL-Shape des Cubes: Dimensionen (filterbare Achsen),
+   Measures (die Zahlen) und welche Dimensionen Codelisten tragen.
+2. **Daten** — die Observations, deren codierte Werte mit dieser Struktur zu
+   Labels aufgelöst werden.
 
 > **Eselsbrücke: «LINDAS spricht in Postleitzahlen, nicht in Ortsnamen.»** Eine
 > Observation sagt Region `1805`; der Server macht daraus «Alpennordhang».
+
+**Beide Schritte passieren in `query_cube_observations`.** Es holt die Struktur
+selbst, ein Aufrufer muss also nicht erst `get_cube_structure` rufen, um
+lesbare Zeilen zu bekommen — das wiederholte nur die Metadaten- und
+Dimensionsabfragen. `get_cube_structure` ist das Werkzeug dafür,
+herauszufinden, was ein Cube *enthält* (Dimensionsnamen, Key vs. Measure,
+Lizenz), und um eine `run_sparql`-Abfrage darauf zu schreiben. Es meldet nur,
+*ob* eine Dimension eine Codeliste hat, nicht deren Einträge — als
+Decodierhilfe taugt es also auch nicht.
 
 ---
 
@@ -326,7 +334,7 @@ daraus werden ausdruecklich bedient statt bei den SDK-Vorgaben belassen:
 | Flaeche | Verhalten |
 |---|---|
 | `serverInfo` | Als `_meta`-Stempel auf jeder Antwort und im Ergebnis von `server/discover`. Name, Titel, Version, Beschreibung und Projekt-URL kommen aus den Metadaten der installierten Distribution, nie von Hand geschrieben. `MCPServer` deckt `version` mit `""` vor und setzt nichts eigenes ein — ungesetzt ist es ein Pflichtfeld, das nichts sagt. |
-| `instructions` | Ergebnis von `server/discover` — der einzige Orientierungskanal eines modernen Clients. Nennt die Reihenfolge des Zwei-Phasen-Zugriffs; ohne sie kommen Beobachtungen als Codes zurueck, die niemand aufloesen kann. |
+| `instructions` | Ergebnis von `server/discover` — der einzige Orientierungskanal eines modernen Clients. Nennt den Einstiegspunkt, sagt, dass `query_cube_observations` die Labels selbst aufloest, und wofuer `get_cube_structure` tatsaechlich da ist. |
 | Log-Zustellung | `logging/setLevel` gibt es nicht mehr (SEP-2577); der Client meldet sich pro Anfrage ueber den reservierten `_meta`-Schluessel `io.modelcontextprotocol/logLevel` an. Ohne ihn sendet der Server nichts, mit `debug` je Werkzeugaufruf eine `notifications/message` auf dem Strom dieser Anfrage. |
 | `tools/list`, `server/discover` | Tragen `ttlMs` 300000 und `cacheScope` `public` (SEP-2549). |
 
