@@ -104,10 +104,16 @@ SERVER_INSTRUCTIONS = """\
 LINDAS is the Swiss administration's SPARQL knowledge graph (~2000 statistical
 cubes from federal offices, plus the geo data behind visualize.admin.ch).
 
-Access is two-phase, and the order matters: `search_cubes` to find a cube URI,
-`get_cube_structure` to learn its dimensions and code lists, only then
-`query_cube_observations` for the data. Reading observations without the
-structure yields codes you cannot interpret.
+Start at `search_cubes` to find a cube URI. `query_cube_observations` then
+returns rows keyed by dimension name with coded values already resolved to
+labels — it reads the cube's structure itself, so you do NOT need to call
+`get_cube_structure` first just to get readable data. Pass
+`resolve_labels=False` if you want the raw codes.
+
+Call `get_cube_structure` when you need to know what a cube contains before
+reading it: dimension names and paths, which are key dimensions and which are
+measures, which carry code lists, and the licence. That is also what you need
+to write a `run_sparql` query against the cube.
 
 The store times out on broad queries. Keep `run_sparql` anchored to a known
 cube or subject; it is the escape hatch for analytical slicing, not a browser.
@@ -322,13 +328,19 @@ async def get_cube_structure(
     language: Language = "de",
     ctx: Context | None = None,
 ) -> CubeStructureResult:
-    """Read a cube's dimensions and measures — always call this before data.
+    """Read a cube's dimensions and measures — what the cube contains.
 
-    This is phase 1 of the two-phase access pattern. It tells you which
-    dimensions you can filter on (`KeyDimension`), which values are measured
-    (`MeasureDimension`), and which dimensions carry code lists. It also
-    returns the licence, which is frequently a Fedlex URI you can resolve with
-    fedlex-mcp.
+    Tells you which dimensions you can filter on (`KeyDimension`), which values
+    are measured (`MeasureDimension`), and which dimensions carry code lists.
+    It also returns the licence, which is frequently a Fedlex URI you can
+    resolve with fedlex-mcp.
+
+    Call this to understand a cube before reading it, and to write a
+    `run_sparql` query against it. It is NOT a prerequisite for readable data:
+    `query_cube_observations` fetches the structure itself and resolves labels
+    on its own. Note that this result reports only *whether* a dimension has a
+    code list (`has_codelist`), not the list's entries — so calling it first
+    does not help you decode raw codes either.
 
     Args:
         cube_uri: A cube URI from `search_cubes`.
