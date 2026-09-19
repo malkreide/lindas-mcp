@@ -326,14 +326,25 @@ jetzt oben in der Belegliste.
 `swiss-courts-mcp` #73 entstand er als «Running» und wurde eine Minute später
 zu «Completed» editiert — dieselbe `id` (`5739967817`); auf #74 stand schon
 beim Anlegen «Completed». **`created_at` sagt damit nichts über den Zustand des
-Reviews.** Wer den Kommentar einmal liest und zwischenspeichert, sieht auf #73
-für immer «Running». Den Text jedes Mal frisch lesen und `updated_at` als
-Zeitpunkt der letzten Statusänderung nehmen.
+Reviews.** Über alle sieben Läufe: sechsmal `created_at` ≠ `updated_at` (der
+Kommentar wurde editiert), einmal identisch (#74). Die Ausnahme ist selten —
+und genau deshalb gefährlich, weil sie die Regel «erst Running, dann
+Completed» plausibel aussehen lässt. Wer den Kommentar einmal liest und
+zwischenspeichert, sieht auf #73 für immer «Running». Den Text jedes Mal frisch
+lesen und `updated_at` als Zeitpunkt der letzten Statusänderung nehmen.
 
 Praktisch heisst das auch: **Ein Edit löst kein `issue_comment`-Ereignis aus.**
 Wer auf ein Webhook wartet, wartet vergeblich — auf `lindas-mcp` #55 wanderte
 `updated_at` von 06:35:44 auf 06:38:29, ohne dass ein Ereignis kam. Der
 P2-Befund dort wurde nur gefunden, weil jemand gepollt hat.
+
+**Und die Ereignisse, die kommen, kommen nicht unbedingt der Reihe nach.** Auf
+`lindas-mcp` #59 traf `ready_for_review` (07:13:37) *vor* `closed/merged`
+(07:13:39) ein — die Reihenfolge stimmte, die Zustellung nicht: das
+Merge-Ereignis kam später an. Wer daraus «noch nicht gemergt» schliesst, hat
+aus einem ausbleibenden Signal einen Zustand gemacht. Bevor der PR-Zustand die
+nächste Handlung bestimmt, ihn frisch abfragen statt aus der Ereignisfolge
+ableiten.
 
 **Wie ein Befund in dieser Form aussieht** — hier war es lange ungemessen, weil
 alle beobachteten Läufe sauber endeten. `lindas-mcp` #55 hat es nachgeliefert,
@@ -341,7 +352,7 @@ und die Antwort lautet: **als beides, aber die Tabelle sagt es nicht.**
 
 | | Tabelle | `get_reviews` | `get_review_comments` |
 |---|---|---|---|
-| ohne Befund (5 Läufe) | `✅ Completed` | `[]` | 0 Threads |
+| ohne Befund (6 Läufe) | `✅ Completed` | `[]` | 0 Threads |
 | mit Befund (#55) | `✅ Completed` | 1 Objekt «💡 Codex Review» | 1 Thread, P2 |
 
 Die Tabelle ist in beiden Fällen **zeichengleich** — keine zusätzliche Zeile,
@@ -351,13 +362,13 @@ auf welchem Commit; sie belegt nicht, **mit welchem Ergebnis**. Dafür bleibt
 `get_reviews` nötig, und bei einem Treffer `get_review_comments` für die
 Threads.
 
-Was auch diese sechs Läufe **nicht** hergeben: dass «Completed» ohne
+Was auch diese sieben Läufe **nicht** hergeben: dass «Completed» ohne
 Befund-Kommentar «kein Befund» beweist. Belegt ist nur, dass in keiner
 bekannten Form einer gepostet wurde. Das Fehlen der Befundlos-Meldung, die die
 erste Schublade als Marker führt, bleibt unerklärt.
 
-**Ein Merge bricht den Lauf nicht ab.** Alle sechs PRs wurden zwischen drei und
-55 Sekunden nach «ready for review» gemergt, und alle sechs Reviews liefen
+**Ein Merge bricht den Lauf nicht ab.** Alle sieben PRs wurden zwischen zwei und
+55 Sekunden nach «ready for review» gemergt, und alle sieben Reviews liefen
 danach zu Ende. Der Review ist also nicht verloren — er kommt bloss zu spät,
 um noch etwas zu verhindern, und ein Befund steht dann schon im Default-Branch.
 Auf #55 war es genau so.
@@ -368,25 +379,26 @@ Auf #55 war es genau so.
 |---|---|---|---|
 | `swiss-courts-mcp` | #74 | 63 s | — |
 | `lindas-mcp` | #58 | 65 s | — |
+| `lindas-mcp` | #59 | 65 s | — |
 | `lindas-mcp` | #56 | 66 s | — |
 | `swiss-courts-mcp` | #73 | 72 s | — |
 | `lindas-mcp` | #57 | 75 s | — |
 | `lindas-mcp` | #55 | **173 s** | **P2** |
 
-Fünf liegen eng beieinander, einer nicht — **und der Ausreisser ist der
-einzige mit Befund.** Hier stand vorher, zwei Punkte zeigten die
-Grössenordnung und «wer eine Minute wartet, hat den Prüfer». Das ist mit dem
-sechsten Punkt widerlegt: Eine Minute hätte fünf Läufe erwischt und genau den
-einen verpasst, auf den es ankam. Ob ein Befund die Mehrzeit *verursacht*, ist
+Sechs liegen eng beieinander (63–75 s), einer nicht — **und der Ausreisser ist
+der einzige mit Befund.** Hier stand vorher, zwei Punkte zeigten die
+Grössenordnung und «wer eine Minute wartet, hat den Prüfer». Das ist widerlegt:
+Eine Minute hätte sechs Läufe erwischt und genau den einen verpasst, auf den
+es ankam. Ob ein Befund die Mehrzeit *verursacht*, ist
 mit einer Beobachtung nicht belegt — die Vermutung liegt nahe und bleibt
 Vermutung. Für die Praxis genügt die Spanne: **63 bis 173 Sekunden**, und wer
 sich am unteren Ende orientiert, richtet sich nach den Läufen, die nichts zu
 sagen hatten.
 
 **Die 👍-Reaktion blieb erneut aus** — `reactions.total_count: 0` auf allen
-sechs Kommentaren, während der Infokasten sie weiter behauptet. Damit steht
-die Behauptung des Kastens gegen zwölf Beobachtungen (sechs am 23.8., sechs am
-19.9.).
+sieben Kommentaren, während der Infokasten sie weiter behauptet. Damit steht
+die Behauptung des Kastens gegen dreizehn Beobachtungen (sechs am 23.8.,
+sieben am 19.9.).
 
 Und ein befundloser Lauf ist kein Freispruch. Am 23.8. lief derselbe Text durch
 42 Reviews: 36 meldeten denselben P2-Befund, 6 die Befundlos-Meldung — gleiche
@@ -405,14 +417,16 @@ Findet nur, wo er *kommentiert* hat. Repos ohne PR-Aktivität tauchen nicht auf
 
 Zweiter Weg, den Prüfer zu verlieren, ganz ohne Kontingentproblem: zu schnell
 mergen. Am 21./22.8. lagen zwischen «ready for review» und Merge mehrfach drei
-bis fünf Sekunden, am 19.9. noch fünfmal dasselbe (`swiss-courts-mcp` #73: drei
-Sekunden, #74: vier; `lindas-mcp` #56: drei, #57: drei, #58: vier — und #55 mit
-55 Sekunden immer noch zu früh). Codex wird beim Umschalten von Draft auf ready
-ausgelöst und braucht danach Zeit; wer sofort mergt, hat das Häkchen gesetzt und
-den Review nicht abgewartet.
+bis fünf Sekunden, am 19.9. noch sechsmal dasselbe (`swiss-courts-mcp` #73: drei
+Sekunden, #74: vier; `lindas-mcp` #56: drei, #57: drei, #58: vier, #59: **zwei**
+— und #55 mit 55 Sekunden immer noch zu früh). Die zwei Sekunden auf #59 sind
+die bisher kürzeste beobachtete Spanne; die «drei bis fünf Sekunden» von
+August sind damit keine Untergrenze mehr. Codex wird beim Umschalten von Draft
+auf ready ausgelöst und braucht danach Zeit; wer sofort mergt, hat das Häkchen
+gesetzt und den Review nicht abgewartet.
 
 Wie viel Zeit, steht oben bei der fünften Form: **63 bis 173 Sekunden** von
-«ready» bis «Completed», sechs Läufe. Der Lauf wird dabei nicht abgebrochen —
+«ready» bis «Completed», sieben Läufe. Der Lauf wird dabei nicht abgebrochen —
 er endet nur, wenn niemand mehr etwas davon hat, und ein Befund steht dann
 schon im Default-Branch.
 
