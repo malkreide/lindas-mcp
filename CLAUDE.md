@@ -376,7 +376,7 @@ wie der Code: Nichts ist rot, weil nichts geprüft wird, worauf es ankommt.
 ## Teil 2 — Dieses Repo
 
 
-**ruff: eine Quelle.** `pyproject.toml`, `dev`-Extra, `ruff==0.16.3`. Die CI
+**ruff: eine Quelle.** `pyproject.toml`, `dev`-Extra, `ruff==0.16.5`. Die CI
 hat keinen eigenen Pin-Schritt — der Install über `ci.yml` genügt, lokal wie
 dort. Eine `.pre-commit-config.yaml` gibt es nicht; wenn eine dazukommt, muss
 sie dieselbe Version aus `pyproject.toml` beziehen und keine zweite nennen.
@@ -393,26 +393,63 @@ PYTHONPATH=src pytest tests/ -m "not live"
 python scripts/check_ruff_pin.py
 ruff check src/ tests/ scripts/
 ruff format --check src/ tests/ scripts/
+python scripts/check_version_sync.py
 ```
 
 **Beide ruff-Gates decken dieselben drei Verzeichnisse ab, und das ist der
-Punkt.** Sie liefen über `src/ tests/`, während unter `scripts/` zwei
-Python-Dateien liegen — `record_fixtures.py` und `classify_live_run.py`,
+Punkt.** Sie liefen über `src/ tests/`, während unter `scripts/` damals zwei
+Python-Dateien lagen — `record_fixtures.py` und `classify_live_run.py`,
 letzteres entscheidet, ob ein roter Live-Lauf ein Issue aufmacht. Beide waren
 von keinem Gate erfasst. Nachgemessen mit einer absichtlich kaputten Sonde in
 `scripts/`: der alte Umfang meldete «All checks passed», der neue Exit 1.
 Kein `include` unter `[tool.ruff]` setzen — das hebt die Pfadangabe der Gates
 still wieder auf.
 
-**Drei ist die ganze Liste — es gibt kein Versions-Sync-Gate.** `scripts/`
-enthält nur die zwei oben genannten Dateien, ein `check_version_sync.py`
-fehlt, und kein Workflow ruft eines auf. `pyproject.toml` und `server.json`
-stehen beide auf `0.2.1`, gehalten wird das von nichts. Die meisten
-Schwester-Server fahren den Gate; beim Anheben hier also beide Stellen von
-Hand, und die README-Badges dazu.
+Inzwischen liegen dort vier Dateien. Die Erweiterung kam am 16.8.2026
+(`d594b15`), die beiden `check_*.py` danach (`1d35b9d` am selben Abend,
+`e13ec8f` am Folgetag) — beide waren also vom ersten Tag an erfasst, ohne
+dass jemand etwas nachziehen musste. Das ist der Beleg für die Form: Die
+Gates nennen ein Verzeichnis und keine Dateiliste.
+
+**Das Versions-Sync-Gate gibt es jetzt.** Hier stand, es gebe keines und
+`pyproject.toml` ↔ `server.json` werde «von nichts» gehalten. Beides ist
+überholt: `scripts/check_version_sync.py` existiert und `ci.yml` ruft es als
+fünften Schritt auf. Beim Anheben fallen die Stellen also nicht mehr
+stillschweigend auseinander — von Hand zu bumpen sind sie weiterhin, das Gate
+merkt es bloss.
+
+Der Absatz hat seine eigene Lehre: Das Gate kam am 16.8.2026 (`1d35b9d`),
+die Verneinung stand danach noch einen Monat hier. Eine Notiz über den Stand
+der CI altert genau dann, wenn niemand sie neben die CI legt — dieselbe
+Klasse wie die zweite Protokoll-Sektion in `README.md`, die `mcp>=1.28.1`
+nannte, während `pyproject.toml` längst `>=2.0.0,<3` verlangte. Wer hier
+etwas über Gates behauptet, liest vorher `ci.yml`.
+
+**Was es hier tatsächlich prüft, ist weniger, als sein Name verspricht.** Der
+Lauf sagt es selbst:
+
+```
+Versions-Sync OK (0.2.1; geprüft: server.json → version,
+server.json → packages[0].version; keine hartkodierte Version in src/)
+```
+
+Zwei Stellen, nicht drei. Das Skript sucht auch die Versions-Badges der
+READMEs (`img.shields.io/badge/version-X.Y.Z-`) — **dieses Repo hat keine**,
+weder in `README.md` noch in `README.de.md`. Der Arm läuft also ins Leere. Das
+ist kein Fehler, aber wer die Zeile «pyproject ↔ server.json / README / src»
+im Workflow-Namen liest, hält die READMEs für abgesichert, und sie sind es
+nicht. Kommt ein Badge dazu, greift der Arm ohne weiteres Zutun; bis dahin ist
+eine Versionsangabe im README-Fliesstext ungeprüft.
+
+**Die zweite Hälfte ist die schärfere.** Das Gate verbietet jede
+hartkodierte Versionsnummer in `src/` — als `__version__`-Literal oder in
+einem User-Agent-Token, das dem Dist-Namen entspricht. Deshalb geht
+`MCPServer(version=...)` in `server.py` über `_version.__version__` und nicht
+über eine Zahl: ein Literal dort wäre nicht bloss unschön, sondern rot. Der
+Fallback `0.0.0+source` bleibt erlaubt, erkannt am lokalen Segment nach `+`.
 
 **Die Matrix ist die breiteste im Portfolio: 3.10 bis 3.13**, vier Felder
-statt der üblichen drei. Alle drei Gates laufen auf allen vieren, keine
+statt der üblichen drei. Alle fünf Gates laufen auf allen vieren, keine
 `if:`-Ausnahme. Ein `fail-fast: false` steht nicht da — eine rote 3.10 bricht
 die übrigen drei ab, bevor sie etwas sagen, und 3.10 ist hier das Feld, das
 am ehesten allein fällt.
