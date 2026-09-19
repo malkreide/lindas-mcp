@@ -484,10 +484,35 @@ beim Merge bereits geschehen, nicht die Pflicht danach. Der Befund auf #55 ist
 in #56 behoben worden, nach dem Merge.
 
 Wer die Zusicherung zurückwill, braucht den Ablauf und nicht das Kästchen:
-nach «ready» auf ein Review-Objekt **oder** eine Befundlos-Meldung warten
-(zwei Abfragen, siehe Teil 1), dann mergen. Gemessene Dauer auf #55: rund
-drei Minuten. Und Vorsicht beim Abholen — der Abschluss kam dort als **Edit**
-des bestehenden Summary-Kommentars (gleiche ID, `updated_at` wanderte von
-06:35:44 auf 06:38:29). Ein Edit löst kein `issue_comment`-Ereignis aus; wer
-auf ein Webhook wartet, wartet vergeblich. Auf `updated_at` schauen, nicht auf
+nach «ready» warten, bis der Review durch ist, dann mergen. Zwei gemessene
+Laufzeiten, Start bis «Completed»: **167 s** (#55) und **61 s** (#56). Das
+ist eine Spanne aus zwei Beobachtungen und kein Erwartungswert — wer daraus
+«etwa eine Minute» macht, mergt beim nächsten Mal zu früh.
+
+**Der Connector in diesem Repo meldet anders, als Teil 1 es beschreibt.**
+Dort steht, Befundlosigkeit komme als gewöhnlicher Issue-Kommentar («Codex
+Review: Didn't find any major issues»). Hier nicht. Gemessen auf #56:
+
+```
+Summary-Kommentar 5740067789: «✅ Completed», 06:57:48
+get_reviews         -> []          (kein Review-Objekt)
+get_review_comments -> 0 Threads
+get_comments        -> nur der Summary-Kommentar
+reactions           -> 0           (kein 👍, kein 👀)
+```
+
+Signal ist also allein die Statustabelle in einem Kommentar, der
+**fortgeschrieben** wird: «🔄 Running since …» wird zu «✅ Completed …»,
+gleiche ID. Ein Befund kommt zusätzlich als Review-Objekt mit Threads (#55,
+`get_reviews` und `get_review_comments`). Beide Abfragen bleiben nötig; neu
+ist, dass die dritte — der Befundlos-Prosatext — hier nie erscheint. Wer auf
+ihn wartet, hält einen sauberen Lauf für einen ausgebliebenen.
+
+Und Vorsicht beim Abholen: Das Fortschreiben ist ein **Edit**, und ein Edit
+löst kein `issue_comment`-Ereignis aus. Auf #55 wanderte `updated_at` von
+06:35:44 auf 06:38:29, ohne dass ein Webhook kam — der P2-Befund dort wurde
+nur gefunden, weil jemand gepollt hat. Auf `updated_at` schauen, nicht auf
 neue Kommentare.
+
+Die 👍-Reaktion, die der Infokasten unter jedem Review verspricht, kam auf
+keinem der beiden PRs. Teil 1 sagt es schon: Der Kasten ist keine Quelle.
