@@ -6,7 +6,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **`search_cubes` sagt jetzt, ob die Antwort vollständig ist.** Zurück kamen
+  bisher nur `returned` Treffer — und damit konnte ein Client «das ist alles»
+  nicht von «das ist Seite eins» unterscheiden. Wer es nicht unterscheiden kann,
+  hört bei der Seite auf, die er bekommen hat, und antwortet «es gibt N Cubes zu
+  X» aus einer Zahl, die bloss sein eigenes Limit ist.
+
+  Neu sind zwei Felder: **`truncated: bool`** und
+  **`total_matched: int | None`**.
+
+  `truncated` ist das tragende Feld und irrt absichtlich nach oben. `false`
+  heisst: alles, was passt, steht in `cubes`. `true` heisst: es gibt mehr — oder
+  es kann mehr geben und die Suchschicht konnte es nicht ausschliessen. Ein
+  falsches `true` kostet eine weitere Abfrage, ein falsches `false` kostet dem
+  Aufrufer den Rest des Ergebnisses, ohne es zu sagen. Die Tool-Beschreibung
+  nennt den Ausweg in der richtigen Reihenfolge: `limit` erhöhen (bis 100), dann
+  über `creator_uri` aus `list_publishers` verengen statt zu blättern — und
+  `latest_only=False` nur für die Versionshistorie, weil es verbreitert und
+  gerade kein Ausweg aus der Kürzung ist.
+
+  **`total_matched` ist bewusst nullable, und das ist der eigentliche Entwurf.**
+  Gemessen live gegen `lindas.admin.ch` am 20.9.2026, deutsche Labels:
+
+  | Begriff | `COUNT(DISTINCT ?cube)` | logische Cubes nach Dedup |
+  |---|---|---|
+  | `wald` | 127 | 35 |
+  | `energie` | 33 | 13 |
+  | `e` | 1528 | ≥ 287 (selbst gedeckelt) |
+
+  Eine Zählabfrage ist schnell genug — 230 bis 932 ms über vier Begriffe, und
+  die beiden langsamsten Messungen waren je die erste Anfrage eines Laufs, also
+  TLS-Aufbau. Der Engpass ist nicht die Zeit, sondern die **Vergleichbarkeit**:
+  Der COUNT zählt Cube-*Versionen*, das Tool liefert im Standardfall
+  versions-kollabierte Cubes. Ein `total_matched` von 127 neben einem `returned`
+  von 20 behauptet 107 fehlende Cubes, wo höchstens 15 zu finden sind.
+
+  Darum drei Wege in dieser Reihenfolge: (1) um eine Zeile überfetchen — kommen
+  weniger Zeilen zurück als angefordert, hat die Pipeline jede passende Zeile
+  gesehen und das Total ist gratis exakt, auf der richtigen Einheit, in beiden
+  Zweigen; (2) gedeckelt und `latest_only=False` — hier sind Zeilen Versionen,
+  also zählt eine zweite Abfrage dasselbe und antwortet exakt, mit eigenem
+  Budget von 8 s, und ein Fehlschlag kostet das Total und nicht die Treffer;
+  (3) gedeckelt und `latest_only=True` — `total_matched` bleibt `null`, weil
+  keine billige Abfrage die URI-Heuristik aus `_base_cube_uri` ausdrückt und ein
+  Nachbau in SPARQL dieselbe Vermutung an einer zweiten Stelle führen würde, wo
+  sie driften kann.
+
+  **Ein zweiter Messbefund entschied eine einzelne Zeile.** Acht Cubes im Store
+  tragen gar kein `schema:creativeWorkStatus`. Die Suchschicht behält sie
+  (`or "status" not in r`), ein strenges
+  `FILTER(STRENDS(STR(?status), "Published"))` wirft sie weg — für `e` gemessen
+  1520 gegen 1528. Die Zählvorlage spiegelt den Filter deshalb mit
+  `!BOUND(?status) ||`; ohne das wäre jedes Total still um genau diese acht kurz,
+  und die Zählung hätte der Auslassung auch noch zugestimmt.
+
+  Bekannte Grenze, dokumentiert statt angenommen: Der COUNT zählt
+  `DISTINCT ?cube`, die Trefferliste zählt Zeilen. Auf den drei geprüften
+  Begriffen sind beide deckungsgleich (127/127, 45/45, 500/500 distinct), aber
+  `search_cubes` projiziert `?creator` und `?version` über `OPTIONAL` — ein Cube
+  mit zwei Creators in derselben Sprache würde die beiden Zahlen trennen.
+
+  Gegenprobe über elf Neutralisierungen gefahren. Eine war beim ersten Durchgang
+  grün: das `+ 1` der Überfetchung liess sich entfernen, ohne dass irgendetwas
+  rot wurde, weil die Mocks eine feste Zeilenzahl liefern, egal welches `LIMIT`
+  die Abfrage nennt. Das ist genau der Test, der grün bleibt, wenn man die
+  Implementierung entfernt — dafür gibt es jetzt zwei eigene Tests, genau `limit`
+  Treffer und eine Zeile unter dem Deckel. Der Live-Test kalibriert sich selbst:
+  Er liest das Total aus dem Store und leitet seine Limits daraus ab, statt 127
+  zu pinnen, und hält zusätzlich die Prämisse des Entwurfs fest — kollabierte
+  Cubes müssen weniger sein als Versionen.
+
+  `tool-definitions.lock.json` bleibt unverändert: Die Argumentfläche ändert
+  sich nicht, beide Felder sind Rückgabefelder, und `_stable_signature` erfasst
+  ausdrücklich nur Namen und `required`.
+
 ### Changed
+
+- **Die Connector-URL und `LINDAS_MCP_ALLOWED_HOSTS` stehen jetzt in beiden
+  READMEs.** Gemeldet aus einem Railway-Deployment. Die Variable existierte nur
+  in `src/` und `tests/` — und das ist die Kombination, die ein Hosting still
+  falsch erbt: Bei einem Non-Loopback-Bind ohne Allow-List gibt
+  `build_transport_security()` `None` zurück, das SDK lässt den
+  DNS-Rebinding-Schutz dann **ganz** aus, und das einzige Anzeichen ist die
+  Startwarnung `dns_rebinding_protection_off`. Wer die Variable nicht kennt,
+  kann sie nicht setzen.
+
+  Dokumentiert sind jetzt in beiden Sprachen die Connector-URL
+  `https://<host>/mcp`, die drei Variablen eines gehosteten Deployments als
+  Tabelle mit der Folge je fehlender Variable, die Schreibweise der Allow-List
+  — kommagetrennt, ohne Schema und ohne Port, weil der Wert wörtlich gegen die
+  `Host`-Kopfzeile geht und die hinter TLS auf 443 keinen Port trägt — und beide
+  Fehlrichtungen: nicht gesetzt heisst Prüfung aus, falsch gesetzt heisst
+  HTTP 421 auf jede echte Anfrage, portgenau. Dazu, dass `ALLOWED_ORIGINS` eine
+  andere Frage ist und nur Browser betrifft, samt dem Detail, dass die aus der
+  Allow-List abgeleiteten Origins `http://`-Varianten sind.
+
+  Kein Code geändert; jede Aussage hängt an einem bestehenden Test
+  (`test_foreign_host_is_rejected`, `test_right_host_wrong_port_is_rejected`,
+  `test_non_local_bind_without_allowlist_stays_off`).
 
 - **BRECHEND für bestehende HTTP-Deployments: das Image fährt jetzt
   `streamable-http` statt `sse`.** Damit wechselt der Endpunkt-Pfad von `/sse`
