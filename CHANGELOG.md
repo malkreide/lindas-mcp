@@ -4,6 +4,50 @@ All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- **BRECHEND für bestehende HTTP-Deployments: das Image fährt jetzt
+  `streamable-http` statt `sse`.** Damit wechselt der Endpunkt-Pfad von `/sse`
+  auf **`/mcp`** — wer den Container hinter einem Reverse-Proxy oder in einer
+  Client-Konfiguration auf `/sse` verdrahtet hat, muss den Pfad nachziehen.
+  `compose.yaml` zieht mit, damit `docker compose up` und ein nacktes
+  `docker run` nicht auf verschiedenen Pfaden bedienen.
+
+  **Wer beim alten Transport bleiben will, setzt `LINDAS_MCP_TRANSPORT=sse`**
+  als Umgebungsvariable; entfernt wurde nichts, nur der Standard gedreht. SSE
+  ist der abgelöste Transport der Spezifikation, `streamable-http` der aktuelle
+  — der Standard zeigt jetzt dorthin, wohin neue Clients ohnehin gehen.
+
+  Beide Pfade stehen ab jetzt in den READMEs. Bisher stand dort keiner, obwohl
+  der Transport ihn bestimmt.
+
+### Fixed
+
+- **Jeder HTTP-Start starb, bevor uvicorn erreicht wurde.** `main()` setzte
+  `mcp.settings.host` und `.port`; in mcp 2.x hat `Settings` keines von beiden,
+  also brach pydantic mit `ValueError: "Settings" object has no field "host"`
+  ab — auf einem Container-Host als Neustartschleife. Gemeldet aus einem
+  Railway-Deployment.
+
+  Beide Werte erreichen ihr Ziel ohne `settings`: `host` als Keyword-Argument
+  der App-Factory, `port` als `uvicorn.run`-Argument. Dieselbe Entfernung hatte
+  `transport_security` getroffen, dort war die Zeile schon weg — die zwei
+  Schwesterzeilen eine Ebene höher beim Aufrufer blieben stehen, weil kein Test
+  `main()` aufrief. `tests/test_entry_point.py` fährt den Startpfad jetzt.
+
+  **Ein Tippfehler in `LINDAS_MCP_TRANSPORT` bleibt trotzdem still**: `main()`
+  fällt auf stdio durch, der Prozess startet, öffnet keinen Port und fällt erst
+  am Healthcheck auf. Dass der Wert des Images kein solcher Tippfehler ist,
+  prüft jetzt ein Gate gegen `HTTP_TRANSPORTS`.
+
+- **Der Startbefehl lud das Modul zweimal.** `CMD ["python", "-m",
+  "lindas_mcp.server"]` zusammen mit einem `__init__.py`, das `.server`
+  importiert, hinterliess zwei verschiedene `MCPServer`-Objekte im Prozess und
+  die `RuntimeWarning` in jedem Container-Log. Jetzt `CMD ["lindas-mcp"]`, der
+  Konsolen-Entry-Point, der genau einmal importiert.
+
 ## [0.3.0] - 2026-09-19
 
 ### Changed

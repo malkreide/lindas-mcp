@@ -19,7 +19,7 @@ FROM python:3.13-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
-    LINDAS_MCP_TRANSPORT=sse \
+    LINDAS_MCP_TRANSPORT=streamable-http \
     HOST=0.0.0.0 \
     PORT=8000
 
@@ -33,7 +33,9 @@ USER mcp
 EXPOSE 8000
 
 # SCALE-004: let orchestrators/load balancers detect an unhealthy container.
-# The SSE runtime opens PORT; a successful TCP connect means the server is up.
+# Either HTTP transport opens PORT; a successful TCP connect means the server is
+# up. It does not distinguish them, nor a stdio fall-through — that one opens no
+# port at all and shows up here as an unhealthy container.
 # Uses stdlib only (no curl in the slim image).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import os,socket; socket.create_connection(('127.0.0.1', int(os.getenv('PORT','8000'))), 3).close()" || exit 1

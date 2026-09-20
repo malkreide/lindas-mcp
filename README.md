@@ -173,11 +173,14 @@ uvx lindas-mcp
 ### Remote deployment
 
 ```bash
-LINDAS_MCP_TRANSPORT=sse PORT=8000 lindas-mcp
+LINDAS_MCP_TRANSPORT=streamable-http PORT=8000 lindas-mcp
 ```
 
-`LINDAS_MCP_TRANSPORT` accepts `stdio` (default), `sse` or `streamable-http`.
-The SSE / streamable-http transport binds to `HOST`, **default `127.0.0.1`**;
+`LINDAS_MCP_TRANSPORT` accepts `stdio` (default), `streamable-http` or `sse`.
+**The transport decides the path**: `streamable-http` serves `/mcp`, `sse`
+serves `/sse`. Anything else falls through to stdio, which opens no port at
+all — in a container that surfaces only as a failing health check.
+Both HTTP transports bind to `HOST`, **default `127.0.0.1`**;
 set `HOST=0.0.0.0` explicitly to expose it (only behind a reverse proxy). For a
 hosted HTTP deployment, set `ALLOWED_ORIGINS` to a comma-separated list of
 browser origins — **unset means no browser client is permitted at all**, which
