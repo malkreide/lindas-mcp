@@ -756,8 +756,15 @@ def main() -> None:
                 "interfaces; run it only behind a reverse proxy / firewall.",
                 file=sys.stderr,
             )
-        mcp.settings.host = host
-        mcp.settings.port = port
+        # `mcp.settings.host = host` / `.port = port` stood here and killed
+        # every HTTP deployment on startup: in mcp 2.x `Settings` carries
+        # neither field (it has auth, debug, dependencies, lifespan, log_level
+        # and the three warn_on_duplicate_* flags), so pydantic raised
+        # `ValueError: "Settings" object has no field "host"`. The same removal
+        # took `transport_security` — see `_run_http`, where that line was
+        # already dropped while these two were left behind. Both values reach
+        # their destination without settings: `host` as a per-app keyword
+        # argument to the app factory, `port` as a `uvicorn.run` argument.
         _run_http("sse" if transport == "sse" else "streamable-http", host, port)
     else:
         mcp.run(transport="stdio")

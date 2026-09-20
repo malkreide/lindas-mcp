@@ -39,4 +39,14 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD python -c "import os,socket; socket.create_connection(('127.0.0.1', int(os.getenv('PORT','8000'))), 3).close()" || exit 1
 
 # Read-only, no-auth public-data server — no secrets required at runtime.
-CMD ["python", "-m", "lindas_mcp.server"]
+#
+# The console entry point, not `python -m lindas_mcp.server`: `__init__.py`
+# imports `.server`, so `-m` loaded the module twice — once as
+# `lindas_mcp.server` during the package import, then again as `__main__`. That
+# is the `RuntimeWarning: 'lindas_mcp.server' found in sys.modules ...` every
+# container start logged, and it left two distinct `MCPServer` instances in the
+# process (measured: the two `mcp` objects are not identical). The served one
+# was the `__main__` copy, so nothing broke — the first was dead weight with its
+# own module-level state. `lindas-mcp` resolves via /app/.venv/bin on PATH and
+# imports `lindas_mcp.server:main` exactly once.
+CMD ["lindas-mcp"]
