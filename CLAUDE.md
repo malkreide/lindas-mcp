@@ -511,6 +511,68 @@ elf Kommentaren, während der Infokasten sie weiter behauptet. Damit steht
 die Behauptung des Kastens gegen siebzehn Beobachtungen (sechs am 23.8.,
 elf am 19.9.).
 
+#### Nachtrag vom 20.9.2026: ein zwölfter Lauf, und eine Antwort, die log
+
+Die Elf-Reihe oben bleibt die Lesung des 19.9. und wird nicht fortgeschrieben:
+mehrere ihrer Sätze hängen daran, dass alle Punkte von **einem** Kalendertag
+stammen. Ein zwölfter Punkt würde sie nicht schärfen, sondern jene Sätze
+falsch machen. Er steht deshalb hier, abgesetzt.
+
+`lindas-mcp` #70, derselbe Ablauf: ready 09:50:09 (Webhook-Zustellsekunde,
+±1 s — wie #62 bis #65), «Completed» 09:51:18 auf `205a8ae`, also **69 s**.
+Kein Befund: `get_reviews` leer, 0 Review-Threads, und wieder **keine
+Befundlos-Meldung** — die ungeklärte Lücke von oben also auch hier. Gemergt
+wurde **vier Sekunden** nach ready, der Review lief danach zu Ende. Diesmal
+ohne Schaden, weil nichts zu melden war; das ist Glück, nicht Verfahren.
+`reactions.total_count: 0` zum achtzehnten Mal.
+
+**Der Punkt, den die Reihe brauchte:** 4 Dateien, **+220** Zeilen, ohne
+Befund, mitten im Band. Das ist der «grosse Diff **ohne** Befund», den der
+Absatz oben ausdrücklich als fehlend benennt. Er schwächt die
+Grössen-Erklärung weiter — #56 (+212, 66 s) steht nicht mehr allein da. Was
+er **nicht** leistet: #55 hatte +632, fast das Dreifache, und bleibt in einer
+eigenen Liga. Die Frage, ob Befund oder Grösse die 173 s trieb, ist damit
+nicht entschieden, nur die bequemste Antwort ist unbequemer geworden.
+
+**Und die gefährlichere Hälfte: eine frische Abfrage lieferte einen
+veralteten Zustand.** Um ~09:51:30 gab `pull_request_read` / `get` für #70
+`draft: true`, `merged: false`, `state: open` und `updated_at: 09:49:14`
+zurück — den Stand **vor** dem ready, über eine Minute alt, obwohl der PR
+seit 09:50:12 gemergt war.
+
+Daraus wurde geschlossen, Codex laufe auch auf Drafts an (der Lauf startete ja
+09:50:16) — und damit die Schublade «**Der PR ist ein Draft** — darauf läuft
+Codex nicht an» für widerlegt gehalten. Sie ist es nicht. Der PR war zu dem
+Zeitpunkt kein Draft mehr; die Auskunft war es. Aufgeklärt hat es erst der
+Merge-Event, der danach eintraf.
+
+Das ist der Absatz «Und die Ereignisse … kommen nicht unbedingt der Reihe
+nach» an seiner Grenze. Sein Rat — «ihn frisch abfragen statt aus der
+Ereignisfolge ableiten» — war befolgt und führte in die Irre. Er bleibt
+richtig und genügt nicht:
+
+- **`updated_at` datiert den gezeigten Stand, nicht die Antwort.** Eine
+  Antwort, deren `updated_at` älter ist als ein Ereignis, das man schon
+  gesehen hat, ist veraltet. Das ist der einzige Test, den man hat — und er
+  greift nur, wenn man die Ereignisse mitliest, statt sie durch die Abfrage
+  zu ersetzen.
+- **Zwei Auskünfte, die einander widersprechen, sind nicht zwei Meinungen.**
+  Ein `ready_for_review`-Ereignis und ein `draft: true` derselben Minute
+  können nicht beide gelten; wer sich für die stillere entscheidet, weil sie
+  aus der API kam, hat die Herkunft mit der Aktualität verwechselt.
+- **Ein Fehlbefund, der eine Löschung auslösen will, ist der teuerste.** Wäre
+  die Draft-Schublade gestrichen worden, stünde die nächste Person vor einem
+  kommentarlosen Draft und hielte ihn für geprüft — der Abschnitt hätte
+  genau die Verwechslung eingebaut, gegen die er geschrieben ist. Dieselbe
+  Klasse wie der geschlossene `labels:`-PR: eine Entfernung, die wie eine
+  Messung aussah.
+
+Ungemessen bleibt, **warum** die Antwort veraltet war. Naheliegend ist ein
+ETag- oder CDN-Cache auf dem Weg zum Connector; belegt ist nur die
+Beobachtung, und aus einer Beobachtung wird keine Cache-Dauer. Wer dieselbe
+Diskrepanz sieht, liest die Ereignisse und fragt erneut ab, statt eine Frist
+zu erfinden.
+
 Und ein befundloser Lauf ist kein Freispruch. Am 23.8. lief derselbe Text durch
 42 Reviews: 36 meldeten denselben P2-Befund, 6 die Befundlos-Meldung — gleiche
 Eingabe, gegenteiliges Urteil, alles in denselben neun Minuten. Ein sauberer
