@@ -149,6 +149,36 @@ Full probe report: [`docs/probe-lindas.md`](docs/probe-lindas.md).
 
 All tools are annotated `readOnlyHint: true`.
 
+### Reading a `search_cubes` result
+
+`returned` is a count of what came back, not a statement about what exists. Two
+fields say how complete the answer is:
+
+| Field | Meaning |
+|---|---|
+| `truncated` | `false` — every match is in `cubes`. `true` — there is more, or there may be more and the server could not rule it out. |
+| `total_matched` | The exact total when one is available on the same unit as `returned`, `null` when no comparable number exists. |
+
+**Check `truncated` before concluding anything.** On `true`, do not report the
+result as complete and do not answer "there are N cubes about X" from
+`returned`. Widen in this order: raise `limit` (up to 100); if it is still
+truncated at 100, narrow with `creator_uri` from `list_publishers` and ask one
+federal body at a time; use `latest_only=False` only when you actually want the
+version history, because it widens the result rather than escaping the cut.
+
+**`total_matched` is `null` more often than you might expect, and on purpose.**
+With `latest_only=true` (the default) the count LINDAS can answer cheaply counts
+cube *versions*, while the tool returns version-collapsed cubes. Measured on
+2026-09-20 with German labels: «wald» matches 127 published versions that
+collapse to 35 logical cubes, «energie» 33 to 13. A `total_matched` of 127 next
+to a `returned` of 20 would claim 107 missing cubes where at most 15 exist to
+find — so the field says `null`, which is true, instead of a number that is not.
+`truncated` stays reliable there and is the field to act on.
+
+Where the server has seen every matching row — which is the common case, because
+it fetches one row beyond what it needs — `total_matched` is exact in both
+branches, and `truncated` is derived from it rather than from the fetch limit.
+
 ---
 
 ## Installation
@@ -275,7 +305,10 @@ Verified live on 2026-07-21.
 5. **Version handling is heuristic.** `search_cubes` deduplicates by stripping
    the version suffix from the cube URI and keeping the highest `schema:version`
    among published cubes. Unusual URI shapes may not collapse cleanly; use
-   `latest_only=False` to inspect every version.
+   `latest_only=False` to inspect every version. The same heuristic is why
+   `total_matched` can be `null`: it is a URI-shape guess in Python, and no cheap
+   SPARQL count expresses it, so restating it in a query would put the same guess
+   in a second place where it can drift.
 
 ---
 

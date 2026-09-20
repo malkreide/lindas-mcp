@@ -149,6 +149,38 @@ Vollständiger Probe-Report: [`docs/probe-lindas.md`](docs/probe-lindas.md).
 
 Alle Tools sind mit `readOnlyHint: true` annotiert.
 
+### Ein `search_cubes`-Ergebnis lesen
+
+`returned` zählt, was zurückkam — es ist keine Aussage darüber, was existiert.
+Zwei Felder sagen, wie vollständig die Antwort ist:
+
+| Feld | Bedeutung |
+|---|---|
+| `truncated` | `false` — alle Treffer stehen in `cubes`. `true` — es gibt mehr, oder es kann mehr geben und der Server konnte es nicht ausschliessen. |
+| `total_matched` | Das exakte Total, wenn eines auf derselben Einheit wie `returned` verfügbar ist, sonst `null`. |
+
+**`truncated` prüfen, bevor man etwas schliesst.** Bei `true` das Ergebnis nicht
+als vollständig ausgeben und nicht «es gibt N Cubes zu X» aus `returned`
+antworten. Verbreitern in dieser Reihenfolge: `limit` erhöhen (bis 100); ist es
+bei 100 noch gekürzt, mit `creator_uri` aus `list_publishers` verengen und ein
+Bundesamt nach dem anderen fragen; `latest_only=False` nur, wenn man die
+Versionshistorie wirklich will — es verbreitert das Ergebnis und ist gerade kein
+Ausweg aus der Kürzung.
+
+**`total_matched` ist häufiger `null`, als man erwartet, und das mit Absicht.**
+Bei `latest_only=true` (dem Standard) zählt die Abfrage, die LINDAS billig
+beantworten kann, Cube-*Versionen*, während das Tool versions-kollabierte Cubes
+liefert. Gemessen am 20.9.2026 mit deutschen Labels: «wald» trifft 127
+publizierte Versionen, die zu 35 logischen Cubes kollabieren, «energie» 33 zu
+13. Ein `total_matched` von 127 neben einem `returned` von 20 behauptete 107
+fehlende Cubes, wo höchstens 15 zu finden sind — also sagt das Feld `null`, was
+wahr ist, statt einer Zahl, die es nicht ist. `truncated` bleibt dort verlässlich
+und ist das Feld, auf das man handelt.
+
+Wo der Server jede passende Zeile gesehen hat — der häufige Fall, weil er eine
+Zeile mehr holt, als er braucht — ist `total_matched` in beiden Zweigen exakt,
+und `truncated` wird daraus abgeleitet und nicht aus dem Abfrage-Limit.
+
 ---
 
 ## Installation
@@ -278,7 +310,11 @@ Live verifiziert am 21. Juli 2026.
 5. **Versionsbehandlung ist heuristisch.** `search_cubes` dedupliziert, indem es
    das Versionssuffix aus der Cube-URI entfernt und die höchste `schema:version`
    unter den publizierten Cubes behält. Ungewöhnliche URI-Formen kollabieren
-   evtl. nicht sauber; mit `latest_only=False` alle Versionen prüfen.
+   evtl. nicht sauber; mit `latest_only=False` alle Versionen prüfen. Dieselbe
+   Heuristik ist der Grund, warum `total_matched` `null` sein kann: Sie ist eine
+   Vermutung über die URI-Form in Python, keine billige SPARQL-Zählung drückt sie
+   aus, und ein Nachbau in einer Abfrage würde dieselbe Vermutung an einer
+   zweiten Stelle führen, wo sie driften kann.
 
 ---
 
