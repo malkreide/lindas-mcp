@@ -682,6 +682,55 @@ per `-m "not live"` ausgeschlossen — DRIFT-005 ist hier erfüllt. `schedule`
 greift nur auf dem Default-Branch (`main`): Änderungen am Workflow wirken erst
 nach dem Merge, vorher von Hand per `workflow_dispatch`.
 
+**Kein Gate fährt den Startpfad, und dort ist es zweimal gekracht.** Am
+20.9.2026 lief der Container auf Railway in eine Neustartschleife:
+
+```
+ValueError: "Settings" object has no field "host"
+```
+
+`main()` setzte `mcp.settings.host` und `.port`. In mcp 2.x hat `Settings`
+keines von beiden — die Felder sind `auth`, `debug`, `dependencies`,
+`lifespan`, `log_level` und drei `warn_on_duplicate_*`. Dieselbe Entfernung
+hatte schon `transport_security` getroffen; jene Zeile war in `_run_http`
+bereits weg, mit erklärendem Kommentar und einem Regressionstest in
+`test_cors.py`. **Der Test lag auf dem Helfer, die überlebenden Zeilen eine
+Ebene höher beim Aufrufer.** Die ganze Suite baute Apps direkt über
+`build_http_app`; `main()` rief kein einziger Test auf, und 177 Tests blieben
+grün, während jeder HTTP-Start starb.
+
+Die Lehre ist nicht «mcp 2.x hat Felder entfernt», sondern: **Wer eine Zeile
+dieser Klasse findet, sucht ihre Geschwister im Aufrufer** — und setzt die
+Naht unter Test, an der das Deployment sie ausführt. `tests/test_entry_point.py`
+tut das jetzt: es patcht `uvicorn.run`, nicht `_run_http`, damit genau die
+Strecke läuft, die gekracht ist.
+
+Die Gegenprobe liegt dort auch fest: Zeilen wieder einfügen → vier
+Fehlschläge; `host` oder `port` nicht an `uvicorn.run` → dieselben vier;
+Loopback-Default gedreht → einer; jeder Transport in den HTTP-Zweig → die
+Gegenkontrolle. Der Test, der `Settings` selbst abfragt, fällt durch **keine**
+Änderung an diesem Repo — er ist eine Drift-Wache auf die Bibliothek und
+steht mit dieser Einschränkung im Docstring.
+
+Zwei Dinge, die der Crash **nicht** war: `LINDAS_MCP_ALLOWED_HOSTS` und
+`ALLOWED_ORIGINS` sind auf Railway ungesetzt, der Start protokolliert beides
+als Warnung und läuft weiter. Wer die Warnungen für die Ursache nimmt, sucht
+am falschen Ort — sie sind Konfiguration, die auf einem öffentlich
+erreichbaren Deployment trotzdem gesetzt gehört.
+
+**Der Startbefehl war zusätzlich der falsche, ohne dass etwas rot wurde.**
+`CMD ["python", "-m", "lindas_mcp.server"]` plus ein `__init__.py`, das
+`.server` importiert, lädt das Modul zweimal — einmal beim Package-Import,
+dann erneut als `__main__`. Das ist die `RuntimeWarning` in jedem
+Container-Log, und gemessen bleiben **zwei verschiedene `MCPServer`-Objekte**
+im Prozess (`s1.mcp is m2.mcp` → `False`). Bedient wurde die
+`__main__`-Kopie, kaputt war nichts, die erste war Ballast mit eigenem
+Modul-Zustand. `CMD ["lindas-mcp"]` importiert genau einmal. Der Test prüft
+dabei nicht die Schreibweise, sondern die Naht: was `CMD` nennt, muss ein
+Konsolen-Script sein, das die Distribution installiert — gelesen aus
+`importlib.metadata`, nicht aus `pyproject.toml`, weil `tomllib` erst ab 3.11
+in der stdlib liegt und die Matrix 3.10 mitfährt.
+
 **Das PR-Template führt keine Codex-Checkliste mehr, mit Absicht.** Dort stand
 «Codex-Review beantwortet oder behoben — kein offener Befund beim Merge». Das
 ist eine Aussage über den Zustand *im Moment des Merges*, und genau die liess
