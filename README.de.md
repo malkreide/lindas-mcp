@@ -181,11 +181,56 @@ LINDAS_MCP_TRANSPORT=streamable-http PORT=8000 lindas-mcp
 `sse` bedient `/sse`. Jeder andere Wert fällt auf stdio durch und öffnet gar
 keinen Port — im Container zeigt sich das nur als fehlschlagender Healthcheck.
 Beide HTTP-Transporte binden an `HOST`, **Default `127.0.0.1`**;
-mit `HOST=0.0.0.0` explizit exponieren (nur hinter einem Reverse-Proxy). Für ein
-gehostetes HTTP-Deployment `ALLOWED_ORIGINS` auf eine kommagetrennte Liste von
-Browser-Origins setzen — **nicht gesetzt heisst: kein Browser-Client wird
-zugelassen**, und das ist der Standard. `*` geht weiterhin und schreibt eine
-Warnung ins Log. `LOG_LEVEL` steuert die JSON-stderr-Logs.
+mit `HOST=0.0.0.0` explizit exponieren (nur hinter einem Reverse-Proxy).
+`LOG_LEVEL` steuert die JSON-stderr-Logs.
+
+#### Betrieb als entfernter Connector
+
+**Die Connector-URL lautet `https://<host>/mcp`.** Der Pfad ist nicht
+konfigurierbar — er kommt vom Transport, und `streamable-http` ist der, den ein
+aktueller Client erwartet. `sse` und sein Pfad `/sse` sind der abgelöste
+Transport der Spezifikation; entfernt wurde nichts und beide bedienen weiterhin,
+aber ein neuer Connector gehört nicht dorthin gerichtet.
+
+Ein gehostetes Deployment — Railway, Fly, ein Container hinter irgendeinem
+Reverse-Proxy — braucht drei Variablen, und die dritte ist die, die ein
+Deployment falsch erbt, weil ohne sie nichts laut scheitert:
+
+| Variable | Wert im Hosting | Wenn nicht gesetzt |
+|---|---|---|
+| `LINDAS_MCP_TRANSPORT` | `streamable-http` | Fällt auf stdio durch: der Prozess startet, öffnet keinen Port und fällt erst am Healthcheck auf. Das Container-Image setzt sie bereits. |
+| `HOST` | `0.0.0.0` | Bindet nur Loopback, der published Port erreicht damit nichts. Das Image setzt sie mit Absicht (SEC-016). |
+| `LINDAS_MCP_ALLOWED_HOSTS` | der öffentliche Hostname | **Die `Host`-Prüfung ist ganz abgeschaltet** — siehe unten. |
+
+**`LINDAS_MCP_ALLOWED_HOSTS` ist eine kommagetrennte Liste von Hostnamen, ohne
+Schema und ohne Port**: `lindas-mcp.example.ch,alias.example.ch`, nicht
+`https://lindas-mcp.example.ch:443`. Der Wert wird wörtlich gegen die
+eingehende `Host`-Kopfzeile geprüft, und die trägt hinter TLS auf Port 443
+keinen Port. Die Loopback-Formen kommen automatisch dazu, damit der
+Container-Healthcheck weiter funktioniert.
+
+Falsch läuft es in zwei entgegengesetzte Richtungen:
+
+- **Nicht gesetzt bei einem Non-Loopback-Bind: der Schutz ist ganz aus.** In
+  dieser Lage ist kein Hostname herleitbar — der Server ist unter einem
+  Service- oder öffentlichen DNS-Namen erreichbar, den dieser Prozess nicht
+  kennt, und eine geratene Liste würde jede echte Anfrage mit 421 abweisen.
+  Also wird gar keine Allow-List installiert und die `Host`-Kopfzeile nie
+  geprüft, was der Vorgabe des SDK entspricht. Das einzige Anzeichen ist eine
+  Warnung beim Start, `dns_rebinding_protection_off`.
+- **Auf den falschen Namen gesetzt: jede echte Anfrage bekommt HTTP 421.** Der
+  Abgleich ist exakt und portgenau — `mcp.example.ch` deckt
+  `Host: mcp.example.ch:8443` nicht ab. Leitet der Proxy einen
+  Nicht-Standard-Port weiter, gehören beide Formen in die Liste.
+
+`ALLOWED_ORIGINS` ist eine eigene Frage und betrifft ausschliesslich
+**Browser**-Clients. Es ist die CORS-Origin-Liste, kommagetrennt, und **nicht
+gesetzt heisst: kein Browser-Client wird zugelassen** — das ist der Standard.
+Ein Client, der kein Browser ist, sendet keinen `Origin` und ist unberührt. `*`
+geht weiterhin und schreibt eine Warnung ins Log. Ein Detail, das man wissen
+sollte, wenn man tatsächlich Browser bedient: die aus
+`LINDAS_MCP_ALLOWED_HOSTS` abgeleiteten Origins sind die `http://`-Varianten,
+ein `https://`-Browser-Origin gehört also selbst in `ALLOWED_ORIGINS`.
 
 ### Docker
 
