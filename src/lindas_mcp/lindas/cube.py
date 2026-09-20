@@ -14,11 +14,21 @@ from typing import Any
 import httpx
 
 from . import queries
-from .client import run_query
+from .client import SparqlError, UpstreamError, run_query
 
 # Cube URIs end in a version segment: .../cube/2024-1 or a trailing /1. We strip
 # it to group versions of the same logical cube for deduplication.
 _VERSION_SUFFIX = re.compile(r"/(cube/)?\d{4}-\d+$|/\d+$")
+
+# Budget for the completeness count in `search`, well under the 45s a search
+# itself gets. The count is a nicety and the hits are the deliverable, so it
+# must never be the reason a search comes back empty-handed.
+#
+# Measured against the live store on 2026-09-20, `queries.count_cubes` over
+# «wald», «energie», «e» and a term that matches nothing: 230-932 ms. The 8s
+# here is roughly nine times the slowest of those, and the two slowest readings
+# were each the first request of a run, i.e. TLS setup rather than the query.
+COUNT_BUDGET_S = 8.0
 
 
 def _base_cube_uri(cube_uri: str) -> str:
@@ -29,6 +39,37 @@ def _local_name(uri: str) -> str:
     return uri.rstrip("/").split("/")[-1] if uri else uri
 
 
+async def _count_matches(
+    http: httpx.AsyncClient, *, query: str, language: str, creator_uri: str | None
+) -> int | None:
+    """Total number of matching cubes, or None if the store would not say.
+
+    A failure here is not a failed search: the caller already holds the hits, and
+    a missing count is expressible (`total_matched=None`) while a raised error
+    would throw away rows that were fetched successfully. Only the two documented
+    outcomes of :func:`run_query` are swallowed — anything else is a bug in this
+    module and must not be disguised as «the store did not answer».
+    """
+    try:
+        rows = await run_query(
+            http,
+            queries.count_cubes(query, language, creator_uri),
+            timeout_s=COUNT_BUDGET_S,
+            total_budget=COUNT_BUDGET_S,
+        )
+    except (SparqlError, UpstreamError):
+        return None
+    if not rows or rows[0].get("n") is None:
+        return None
+    try:
+        return int(rows[0]["n"])
+    except (TypeError, ValueError):
+        # SPARQL hands the aggregate over as a string; anything that is not a
+        # number means the shape of the answer changed, and inventing a total
+        # from it would be worse than admitting we have none.
+        return None
+
+
 async def search(
     http: httpx.AsyncClient,
     *,
@@ -37,25 +78,75 @@ async def search(
     creator_uri: str | None,
     limit: int,
     latest_only: bool,
-) -> list[dict[str, Any]]:
-    """Search cubes, optionally collapsing versions to the newest per cube."""
+) -> dict[str, Any]:
+    """Search cubes and say how complete the answer is.
+
+    Returns ``{"cubes": [...], "total_matched": int | None, "truncated": bool}``.
+    ``returned`` on its own cannot distinguish «that is all there is» from «that
+    is the first page», and a caller who cannot tell stops at the page it got.
+
+    **`truncated` is the load-bearing field, and it errs towards True.** False
+    means: everything that matched is in `cubes`. True means: there is more, or
+    there may be more and this layer could not rule it out. The asymmetry is
+    deliberate — a wrong True costs a second query, a wrong False costs the
+    caller the rest of the result set without telling it.
+
+    Three routes to the two numbers, in order of preference:
+
+    1. **The store was not capped.** One extra row is fetched beyond what is
+       needed (`+ 1`), so a full page is distinguishable from a complete one. If
+       fewer rows came back than were asked for, this layer has seen every
+       matching row, and `total_matched` is simply the length of the processed
+       list — exact, free, and on the same unit as `cubes` in both branches.
+    2. **Capped, and `latest_only=False`.** Rows are cube versions here, which is
+       what `queries.count_cubes` counts, so a second query answers it exactly.
+    3. **Capped, and `latest_only=True`.** `total_matched` stays None, and this
+       is the case the obvious implementation gets wrong. Measured live on
+       2026-09-20, German labels: «wald» matches 127 cubes but collapses to 35
+       logical ones, «energie» 33 to 13. Reporting 127 next to a `returned` of
+       20 would tell a caller it is missing 107 cubes when at most 15 exist for
+       it to find. The count LINDAS can give cheaply is a count of versions; no
+       cheap query expresses the version-collapse heuristic in
+       `_base_cube_uri`. None says «unknown», which is true, where 127 would say
+       something false.
+
+    Where an exact `total_matched` exists, `truncated` is derived from it rather
+    than from the cap: the store being capped does not by itself mean rows were
+    withheld from `cubes` — the status filter below can shrink a capped page to
+    fewer hits than the total.
+    """
     # Over-fetch when deduplicating, because several rows may collapse into one.
-    fetch = limit * 4 if latest_only else limit
+    # The `+ 1` is what makes truncation observable: without it, a page that is
+    # exactly full and a result set that is exactly exhausted look identical.
+    fetch = limit * 4 + 1 if latest_only else limit + 1
     rows = await run_query(http, queries.search_cubes(query, language, creator_uri, fetch))
+    store_capped = len(rows) >= fetch
 
     published = [r for r in rows if r.get("status", "").endswith("Published") or "status" not in r]
 
-    if not latest_only:
-        return published[:limit]
+    if latest_only:
+        newest: dict[str, dict[str, Any]] = {}
+        for row in published:
+            base = _base_cube_uri(row["cube"])
+            current = newest.get(base)
+            if current is None or _version_key(row) > _version_key(current):
+                newest[base] = row
+        candidates = sorted(newest.values(), key=_version_key, reverse=True)
+    else:
+        candidates = published
 
-    newest: dict[str, dict[str, Any]] = {}
-    for row in published:
-        base = _base_cube_uri(row["cube"])
-        current = newest.get(base)
-        if current is None or _version_key(row) > _version_key(current):
-            newest[base] = row
-    result = sorted(newest.values(), key=_version_key, reverse=True)
-    return result[:limit]
+    hits = candidates[:limit]
+
+    if not store_capped:
+        total: int | None = len(candidates)
+    elif not latest_only:
+        total = await _count_matches(http, query=query, language=language, creator_uri=creator_uri)
+    else:
+        total = None
+
+    truncated = total > len(hits) if total is not None else True
+
+    return {"cubes": hits, "total_matched": total, "truncated": truncated}
 
 
 def _version_key(row: dict[str, Any]) -> tuple:

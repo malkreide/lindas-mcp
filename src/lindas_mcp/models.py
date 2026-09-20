@@ -35,6 +35,23 @@ class CubeSearchResult(LindasResponse):
     language: str
     latest_only: bool
     returned: int
+    total_matched: int | None = Field(
+        default=None,
+        description=(
+            "Total cubes matching the query, on the same unit as `returned`. None means "
+            "the store could not be asked cheaply for a comparable number — with "
+            "latest_only=true the count LINDAS gives counts cube VERSIONS, not the "
+            "version-collapsed cubes returned here (measured: 127 versions vs 35 cubes "
+            "for 'wald'), so a number would be misleading. Read `truncated` instead."
+        ),
+    )
+    truncated: bool = Field(
+        description=(
+            "True when more cubes match than are returned, or when that could not be "
+            "ruled out. False means `cubes` holds every match. Errs towards True: a "
+            "wrong True costs one more query, a wrong False silently hides results."
+        ),
+    )
     match_type: Literal["exact", "none"] = Field(
         default="exact",
         description="'none' when nothing matched — distinguishes a real miss from an error.",

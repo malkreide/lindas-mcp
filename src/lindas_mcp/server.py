@@ -272,6 +272,30 @@ async def search_cubes(
     By default only the newest published version of each cube is returned;
     set `latest_only=False` to see every version.
 
+    **Check `truncated` before you conclude anything from the result.**
+    `returned` alone cannot tell a complete answer from a first page.
+
+    - `truncated: false` — `cubes` holds every cube that matched. You may say so.
+    - `truncated: true` — more cubes matched than you got back, or that could not
+      be ruled out cheaply. Do NOT report the result as the complete set, and do
+      NOT answer "there are N cubes about X" from `returned`.
+
+    On `truncated: true`, widen in this order:
+
+    1. Raise `limit` (up to 100) and search again — usually enough.
+    2. Still truncated at 100? Narrow instead of paging: add `creator_uri` from
+       `list_publishers` to ask one federal body at a time.
+    3. Set `latest_only=False` if you specifically need historical versions. It
+       widens rather than narrows — every version becomes its own hit — so use it
+       to inspect a cube's history, not to escape truncation.
+
+    `total_matched` carries the exact number when one is available and `null`
+    otherwise. `null` is not an error and not zero: with `latest_only=true` the
+    count the store can give cheaply counts cube *versions*, while this tool
+    returns version-collapsed cubes (measured: 127 versions collapse to 35 cubes
+    for "wald"), so no comparable number exists. `truncated` is still reliable
+    there — prefer it over guessing from `total_matched`.
+
     Args:
         query: Topic term, e.g. "Wald", "Abfluss", "Energie". Matched against
             cube names and descriptions in the chosen language.
@@ -282,7 +306,7 @@ async def search_cubes(
     """
     started = time.monotonic()
     async with client_session() as http:
-        rows = await cube.search(
+        found = await cube.search(
             http,
             query=query,
             language=language,
@@ -299,15 +323,24 @@ async def search_cubes(
             version=r.get("version"),
             status=(r.get("status") or "").rsplit("/", 1)[-1] or None,
         )
-        for r in rows
+        for r in found["cubes"]
     ]
-    await _log_call(ctx, "search_cubes", started, returned=len(hits))
+    await _log_call(
+        ctx,
+        "search_cubes",
+        started,
+        returned=len(hits),
+        total_matched=found["total_matched"],
+        truncated=found["truncated"],
+    )
     return CubeSearchResult(
         retrieved_at=_now(),
         query=query or None,
         language=language,
         latest_only=latest_only,
         returned=len(hits),
+        total_matched=found["total_matched"],
+        truncated=found["truncated"],
         match_type="exact" if hits else "none",
         suggestion=(
             None
