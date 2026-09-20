@@ -4,7 +4,7 @@ services:
     image: lindas-mcp:dev
     ports: ["8000:8000"]
     environment:
-      LINDAS_MCP_TRANSPORT: sse
+      LINDAS_MCP_TRANSPORT: streamable-http
       # Explicit opt-in: bind all interfaces INSIDE the isolated container so the
       # published port is reachable (the server default is 127.0.0.1 — SEC-016).
       HOST: "0.0.0.0"

@@ -741,11 +741,19 @@ def _run_http(transport: str, host: str, port: int) -> None:
     uvicorn.run(build_http_app(transport, security, host), host=host, port=port, log_level="info")
 
 
+# The values of LINDAS_MCP_TRANSPORT that serve over HTTP. Named rather than
+# inline in `main()` so the container image's own value can be checked against
+# it: anything outside this set falls through to stdio, which in a container
+# means a process that starts, opens no port and only fails at the health
+# check. A typo is not supposed to look like a deployment.
+HTTP_TRANSPORTS = frozenset({"sse", "streamable-http", "http"})
+
+
 def main() -> None:
     """Entry point. Transport via LINDAS_MCP_TRANSPORT (stdio | sse | http)."""
     configure_logging(os.getenv("LOG_LEVEL", "INFO"))
     transport = os.getenv("LINDAS_MCP_TRANSPORT", "stdio").lower()
-    if transport in {"sse", "streamable-http", "http"}:
+    if transport in HTTP_TRANSPORTS:
         # SEC-016: default to loopback. Binding to all interfaces is an
         # explicit opt-in (the container image sets HOST=0.0.0.0 on purpose).
         host = os.getenv("HOST", "127.0.0.1")

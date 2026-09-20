@@ -149,3 +149,72 @@ def test_the_container_start_command_matches_the_declared_script() -> None:
         f"install as a console script"
     )
     assert scripts[befehl] == "lindas_mcp.server:main"
+
+
+def _env_aus_dockerfile(zeilen: list[str]) -> dict[str, str]:
+    """The single `ENV` block's assignments, which span lines via `\\`."""
+    env: dict[str, str] = {}
+    sammeln = False
+    for zeile in zeilen:
+        rest = zeile[4:] if zeile.startswith("ENV ") else (zeile if sammeln else None)
+        if rest is None:
+            continue
+        sammeln = rest.rstrip().endswith("\\")
+        paar = rest.rstrip().rstrip("\\").strip()
+        if "=" in paar:
+            schluessel, _, wert = paar.partition("=")
+            env[schluessel.strip()] = wert.strip().strip('"')
+    return env
+
+
+def test_the_image_transport_is_one_that_actually_serves_http() -> None:
+    """A typo in `LINDAS_MCP_TRANSPORT` is not a crash — `main()` falls through
+    to its stdio branch. In a container that means a process that starts
+    cleanly, opens no port, and fails only at the health check minutes later,
+    with nothing in the log naming the cause.
+
+    So the image's own value is checked against `HTTP_TRANSPORTS` rather than
+    against a string spelled out here: a literal would have to be kept in step
+    with `main()` by hand, which is the drift this test exists to catch.
+    """
+    from pathlib import Path
+
+    from lindas_mcp.server import HTTP_TRANSPORTS
+
+    wurzel = Path(__file__).resolve().parent.parent
+    env = _env_aus_dockerfile((wurzel / "Dockerfile").read_text().splitlines())
+
+    transport = env.get("LINDAS_MCP_TRANSPORT")
+    assert transport is not None, f"Dockerfile sets no LINDAS_MCP_TRANSPORT (read: {env})"
+    assert transport in HTTP_TRANSPORTS, (
+        f"the image would serve {transport!r}, which main() does not route to HTTP — "
+        f"it falls through to stdio and opens no port. Expected one of "
+        f"{sorted(HTTP_TRANSPORTS)}"
+    )
+    # HOST too: the image opts into all interfaces on purpose (SEC-016), and
+    # without it the published port reaches a loopback-only server.
+    assert env.get("HOST") == "0.0.0.0", f"image HOST is {env.get('HOST')!r}, not 0.0.0.0"
+
+
+def test_compose_and_the_image_agree_on_the_transport() -> None:
+    """Two files naming the transport is one too many, but compose overrides the
+    image, so a stale value there is what a contributor actually runs. Comparing
+    them to each other keeps `docker compose up` and a plain `docker run` on the
+    same endpoint path — `/mcp` for streamable-http, `/sse` for sse.
+    """
+    import re
+    from pathlib import Path
+
+    wurzel = Path(__file__).resolve().parent.parent
+    bild = _env_aus_dockerfile((wurzel / "Dockerfile").read_text().splitlines())
+
+    treffer = re.search(
+        r"^\s+LINDAS_MCP_TRANSPORT:\s*(\S+)\s*$",
+        (wurzel / "compose.yaml").read_text(),
+        re.MULTILINE,
+    )
+    assert treffer, "compose.yaml names no LINDAS_MCP_TRANSPORT"
+    assert treffer.group(1) == bild["LINDAS_MCP_TRANSPORT"], (
+        f"compose.yaml runs {treffer.group(1)!r} while the image defaults to "
+        f"{bild['LINDAS_MCP_TRANSPORT']!r} — the two serve different paths"
+    )
